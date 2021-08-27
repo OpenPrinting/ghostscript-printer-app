@@ -1,0 +1,10 @@
+[Unit]
+Description=Ghostscript Printer Application
+
+[Service]
+ExecStart=ghostscript-printer-app server
+ExecStop=ghostscript-printer-app shutdown
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,483 @@
+name: ghostscript-printer-app
+base: core20
+version: '1.0'
+summary: PostScript Printer Application
+description: |
+  The Ghostscript Printer Application is a PAPPL (Printer Application
+  Framework) based Printer Application to support printers using
+  Ghostscript's built-in printer drivers (and some extra filters).
+
+grade: stable
+confinement: strict
+
+# Only build on the architectures supported
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+  - build-on: armhf
+
+# Make resolution of ".local" host names (Zero-Conf/mDNS/DNS-SD)
+# working: Mirror nsswitch.conf with added mDNS look-up support into
+# /etc/nsswitch.conf
+# See: https://forum.snapcraft.io/t/how-can-i-lookup-host-name-from-snap-core-using-avahi-mdns/
+layout:
+  /etc/nsswitch.conf:
+    bind-file: $SNAP/etc/nsswitch.conf
+
+apps:
+  ghostscript-printer-app-server:
+    command: scripts/run-ghostscript-printer-app-server
+    daemon: simple
+    plugs: [avahi-control, home, network, network-bind, raw-usb]
+  ghostscript-printer-app:
+    command: scripts/run-ghostscript-printer-app
+    plugs: [avahi-control, home, network, network-bind, raw-usb]
+
+parts:
+  patches:
+    plugin: dump
+    source: snap/local/
+    organize:
+      '*.patch' : patches/
+    override-prime: ""
+
+  jpeglib:
+    plugin: autotools
+    source: https://www.ijg.org/files/jpegsrc.v9d.tar.gz
+    source-type: tar
+    autotools-configure-parameters:
+      - --prefix=/usr
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -snap
+      - usr/lib/libjpeg.so.9
+      - usr/lib/libjpeg.so.9.4.0
+
+  pappl:
+    source: https://github.com/michaelrsweet/pappl
+    source-type: git
+    plugin: autotools
+    override-build: |
+      set -eux
+      patch -p1 < $SNAPCRAFT_STAGE/patches/pappl-refresh-media-default-when-changing-media-ready.patch
+      patch -p1 < $SNAPCRAFT_STAGE/patches/pappl-support-text-string-vendor-options.patch
+      snapcraftctl build
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --with-papplstatedir=/var/snap/ghostscript-printer-app/common
+      - --with-papplsockdir=/var/snap/ghostscript-printer-app/common/tmp
+      - --enable-libjpeg
+      - --enable-libpng
+      - --enable-libusb
+      - --with-dnssd=avahi
+    build-packages:
+      - libavahi-client-dev
+      - libgnutls28-dev
+      - libjpeg-dev
+      - libpam0g-dev
+      - libpng-dev
+      - libusb-1.0-0-dev
+      - zlib1g-dev
+    stage-packages:
+      - libavahi-client3
+      - libpng16-16
+      - libusb-1.0-0
+    prime:
+      - -etc/fonts
+      - -lib
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -snap
+      - usr/lib/libpappl.so.1
+    after: [patches, jpeglib]
+
+  pappl-retrofit:
+    source: https://github.com/openprinting/pappl-retrofit
+    source-type: git
+    plugin: autotools
+    override-build: |
+      set -eux
+      patch -p1 < $SNAPCRAFT_STAGE/patches/support-new-pappl-string-options.patch
+      snapcraftctl build
+    autotools-configure-parameters:
+      - --prefix=/usr
+    build-packages:
+      - autoconf
+      - automake
+      - libtool
+      - autotools-dev
+      - pkg-config
+      - perl-base
+    prime:
+      - -var
+      - -usr/bin/test-printer-app
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/lib/test-printer-app
+      - -usr/share/
+      - -snap
+    after: [patches, cups, cups-filters, pappl]
+
+  qpdf:
+    source: https://github.com/qpdf/qpdf/releases/download/release-qpdf-10.3.1/qpdf-10.3.1.tar.gz
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    build-packages:
+      - g++
+      - zlib1g-dev
+    stage-packages:
+      - libjpeg-turbo8
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -share/man
+      - -share/doc
+      - -share/lintian
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/lib/libqpdf.a
+      - -usr/lib/libqpdf.la
+      - -usr/lib/pkgconfig
+
+  ghostscript:
+    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs9540/ghostscript-9.54.0.tar.gz
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --without-x
+      - --disable-gtk
+      - --with-drivers=ALL
+      - --enable-freetype
+      - --without-tesseract
+      - --datarootdir=/snap/ghostscript-printer-app/current/usr/share/
+    stage-packages:
+      - libpaper1
+      - libfontconfig1
+      - libfreetype6
+      - libpng16-16
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -snap
+    organize:
+      snap/ghostscript-printer-app/current/usr/share: usr/share
+
+  cups:
+    source: https://github.com/OpenPrinting/cups
+    source-type: git
+    plugin: autotools
+    override-build: |
+      set -eux
+      ./configure --sysconfdir=/var/snap/ghostscript-printer-app/common/
+      cd cups
+      make
+      cd ..
+      cd filter
+      make rastertohp
+      cd ..
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib
+      cp cups/libcups*.a $SNAPCRAFT_STAGE/usr/lib/
+      cp cups/libcups*.so* $SNAPCRAFT_STAGE/usr/lib/
+      mkdir -p $SNAPCRAFT_STAGE/usr/include/cups
+      cp cups/*.h $SNAPCRAFT_STAGE/usr/include/cups/
+      mkdir -p $SNAPCRAFT_STAGE/usr/bin
+      cp cups-config $SNAPCRAFT_STAGE/usr/bin/
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertohp $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      #snapcraftctl build
+    build-packages:
+      - patch
+      - gettext
+      - autoconf
+      - automake
+      - libtool
+      - autotools-dev
+      - pkg-config
+      - libavahi-client-dev
+      - libavahi-common-dev
+      - libavahi-compat-libdnssd-dev
+      - libdbus-1-dev
+      - libfontconfig1-dev
+      - libfreetype6-dev
+      - libgnutls28-dev
+      - libjpeg-dev
+      - libldap2-dev
+      - libkrb5-dev
+      - libpam0g-dev
+      - libpaper-dev
+      - libpng-dev
+    stage-packages:
+      - libavahi-common3
+      - libavahi-client3
+      - libicu66
+      - libjson-glib-1.0-0
+      - libsoup2.4-1
+      - libxml2
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - usr/lib
+      - usr/lib/libcups.so.2
+      - usr/lib/libcupsimage.so.2
+      - usr/lib/ghostscript-printer-app/filter/rastertohp
+
+  cups-filters:
+    source: https://github.com/OpenPrinting/cups-filters
+    source-type: git
+    plugin: autotools
+    override-build: |
+      set -eux
+      ./autogen.sh
+      ./configure --disable-avahi --disable-ldap --disable-foomatic --disable-braille --disable-mutool --without-rcdir --with-pdftoghostscript-path=/snap/cups/current/usr/bin/pdftops
+      make libppd.la
+      make libcupsfilters.la
+      make libfontembed.la
+      make foomatic-rip
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib
+      cp .libs/lib* $SNAPCRAFT_STAGE/usr/lib/
+      mkdir -p ../install
+      cp .libs/foomatic-rip ../install
+      mkdir -p $SNAPCRAFT_STAGE/usr/include/ppd
+      cp ppd/*.h $SNAPCRAFT_STAGE/usr/include/ppd/
+      mkdir -p $SNAPCRAFT_STAGE/usr/include/cupsfilters
+      cp cupsfilters/*.h $SNAPCRAFT_STAGE/usr/include/cupsfilters/
+      mkdir -p $SNAPCRAFT_STAGE/usr/include/fontembed
+      cp fontembed/*.h $SNAPCRAFT_STAGE/usr/include/fontembed/
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib/pkgconfig
+      cp *.pc $SNAPCRAFT_STAGE/usr/lib/pkgconfig/
+      #snapcraftctl build
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - poppler-utils
+      - libglib2.0-dev
+      - liblcms2-dev
+      - libpoppler-cpp-dev
+      - libpng-dev
+      - libtiff5-dev
+      - zlib1g-dev
+      - libfontconfig1-dev
+      - libdbus-1-dev
+      - librsvg2-bin
+    stage-packages:
+      - poppler-utils
+      - libpoppler-cpp0v5
+      - libjbig0
+      - liblcms2-2
+      - libnspr4
+      - libnss3
+      - libopenjp2-7
+      - libpoppler97
+      - libtiff5
+      - libwebp6
+    organize:
+      foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - usr/lib
+      - usr/lib/libcupsfilters.so.1
+      - -usr/lib/libcupsfilters.so.1.0.0
+      - usr/lib/libppd.so.1
+      - -usr/lib/libppd.so.1.0.0
+      - usr/lib/libfontembed.so.1
+      - -usr/lib/libfontembed.so.1.0.0
+      - usr/bin/pdftops
+      - usr/lib/ghostscript-printer-app
+    after: [jpeglib, cups, qpdf, ghostscript]
+
+  pyppd:
+    source: https://github.com/OpenPrinting/pyppd
+    source-type: git
+    plugin: python
+    override-prime: ""
+
+  foomatic-db:
+    source: https://github.com/OpenPrinting/foomatic-db
+    source-type: git
+    plugin: nil
+    override-build: |
+      set -eux
+      ./make_configure
+      ./configure --disable-ppds-to-cups --disable-gzip-ppds --prefix=/usr --with-drivers=NOOBSOLETES,NOEMPTYCMDLINE
+      make DESTDIR=`pwd`/../install install
+      cd ../install
+      rm usr/share/foomatic/db/source/PPD/*/*.ppd
+      rm -rf usr/share/foomatic/db/source/PPD/Kyocera
+      rm -rf usr/share/foomatic/db/source/PPD/Oce
+      rm -rf usr/share/foomatic/db/source/PPD/*/PS
+      find usr/share/foomatic/db -executable -type f -print0 | xargs -0 chmod -x || :
+      find usr/share/foomatic/db/source/PPD -type f \! -name '*.ppd' -print0 | xargs -0 rm || :
+      for f in `find usr/share/foomatic/db/source/PPD -name '*.ppd'`; do perl -p -i -e 's/^\*CloseUI(\s+)/*CloseUI:\1/' $f; perl -p -i -e 's/\*1284DeviceId/*1284DeviceID/' $f; perl -p -i -e 's/\*(cupsFilter2?:)/\*%\1/' $f; done
+      ( cd usr/share/foomatic/db/source/driver; \
+        rm bjc800j.xml; \
+        rm c2070.xml; \
+        rm drv_x125.xml; \
+        rm lm1100.xml; \
+        rm lpstyl.xml; \
+        rm ml85p.xml; \
+        rm pbm2l2030.xml; \
+        rm pbm2l7k.xml; \
+        rm pbm2lwxl.xml; \
+        rm pentaxpj.xml; \
+      	rm ppmtomd.xml; \
+      )
+      FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o foomatic-ppds ppd
+      rm -rf ppd
+      mv usr/share/foomatic/db/source/PPD ppd
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
+      #snapcraftctl build
+    build-packages:
+      - perl-base
+      - python3
+      - xz-utils
+      - foomatic-db-engine
+    stage-packages:
+      - python3
+      - xz-utils
+    organize:
+      foomatic-ppds: usr/share/ppd/foomatic-ppds
+      manufacturer-ppds: usr/share/ppd/manufacturer-ppds
+    stage:
+      - usr/bin
+      - usr/share/ppd
+    prime:
+      - -etc
+      - usr/bin
+      - usr/share/ppd
+      - -usr/share/apport
+      - -usr/share/bug
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/share/foomatic
+      - -usr/share/pnm2ppa
+      - -var
+    after: [pyppd]
+
+  extra-filters:
+    plugin: nil
+    source: .
+    stage-packages:
+      - libidn11
+      - libhpmud0
+      - libperl5.30
+      - libsnmp35
+      - libusb-1.0-0
+      - printer-driver-c2050
+      - printer-driver-cjet
+      - printer-driver-min12xxw
+      - printer-driver-pnm2ppa
+      - printer-driver-hpijs
+    stage:
+      - -usr/bin/gs
+      - -usr/bin/ps2epsi
+    prime:
+      - -etc
+      - lib
+      - usr/bin
+      - usr/lib
+      - -usr/share/ppd/hplip
+      - -usr/share/apport
+      - -usr/share/bug
+      - -usr/share/cups
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/share/foomatic
+      - -usr/share/pnm2ppa
+      - -var
+
+  ghostscript-printer-app:
+    plugin: make
+    source: .
+    make-parameters:
+      - LDFLAGS="$LDFLAGS -ljpeg"
+    build-packages:
+      - libusb-1.0-0-dev
+    stage-packages:
+      - libusb-1.0-0
+      - libjbig0
+      - liblcms2-2
+      - libtiff5
+      - libwebp6
+    stage:
+      - -usr/lib/ghostscript-printer-app
+    prime:
+      - -var
+      - -usr/share/man
+    after: [pappl-retrofit, pappl, cups-filters, foomatic-db, extra-filters]
+
+  mdns-lookup:
+    # Make resolution of ".local" host names (Zero-Conf/mDNS/DNS-SD)
+    # working: Take the original nsswitch.conf file from the base
+    # Snap and add "mdns4_minimal [NOTFOUND=return]" to its "hosts:" line
+    # Also install corresponding mdns4_minimal plug-in
+    # See: https://forum.snapcraft.io/t/no-mdns-support-in-snaps-should-core-have-a-modified-nsswitch-conf/
+    plugin: nil
+    stage-packages:
+      - libnss-mdns
+    override-prime: |
+      set -eux
+      sed -Ee 's/^\s*hosts:(\s+)files/hosts:\1files mdns4_minimal \[NOTFOUND=return\]/' /snap/core20/current/etc/nsswitch.conf > $SNAPCRAFT_STAGE/etc/nsswitch.conf
+      snapcraftctl prime
+    prime:
+      - lib/$SNAPCRAFT_ARCH_TRIPLET/libnss_mdns4_minimal*
+      - etc/nsswitch.conf
+
+  scripts:
+    plugin: dump
+    source: snap/local/
+    organize:
+      run-ghostscript-printer-app*: scripts/
+    prime:
+      - scripts/
+    after: [ghostscript-printer-app]
