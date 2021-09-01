@@ -1,7 +1,7 @@
 name: ghostscript-printer-app
 base: core20
 version: '1.0'
-summary: PostScript Printer Application
+summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
   Framework) based Printer Application to support printers using
