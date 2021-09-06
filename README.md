@@ -235,7 +235,7 @@ TESTPAGE=/path/to/my/testpage/my_testpage.ps PPD_PATHS=/path/to/my/ppds:/my/seco
 
 ## LEGAL STUFF
 
-The PostScript Printer Application is Copyright © 2020 by Till Kamppeter.
+The Ghostcript Printer Application is Copyright © 2020 by Till Kamppeter.
 
 It is derived from the HP PCL Printer Application, a first working model of
 a raster Printer Application using PAPPL. It is available here:
