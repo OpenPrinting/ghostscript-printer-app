@@ -160,6 +160,8 @@ parts:
   ghostscript:
     source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs9540/ghostscript-9.54.0.tar.gz
     plugin: autotools
+    # As this Printer Application supports Ghostscript's built-in drivers,
+    # we build them all.
     autotools-configure-parameters:
       - --prefix=/usr
       - --without-x
@@ -191,6 +193,8 @@ parts:
     source: https://github.com/OpenPrinting/cups
     source-type: git
     plugin: autotools
+    # We only need libcups (with headers, ...) and the rastertohp filter
+    # (for the PCL-5 PPD files from Ricoh and OEM)
     override-build: |
       set -eux
       ./configure --sysconfdir=/var/snap/ghostscript-printer-app/common/
@@ -257,6 +261,9 @@ parts:
     source: https://github.com/OpenPrinting/cups-filters
     source-type: git
     plugin: autotools
+    # We only need the 3 libraries: libcupsfilters, libppd, and libfontembed
+    # and foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
+    # also for the PCL-XL PPDs from Ricoh and OEM)
     override-build: |
       set -eux
       ./autogen.sh
@@ -346,13 +353,23 @@ parts:
       ./configure --disable-ppds-to-cups --disable-gzip-ppds --prefix=/usr --with-drivers=NOOBSOLETES,NOEMPTYCMDLINE
       make DESTDIR=`pwd`/../install install
       cd ../install
+      # Remove all PostScript PPDs, these printers are supported by the
+      # PostScript Printer Application
       rm usr/share/foomatic/db/source/PPD/*/*.ppd
       rm -rf usr/share/foomatic/db/source/PPD/Kyocera
       rm -rf usr/share/foomatic/db/source/PPD/Oce
       rm -rf usr/share/foomatic/db/source/PPD/*/PS
+      # Remove executable bits on the files
       find usr/share/foomatic/db -executable -type f -print0 | xargs -0 chmod -x || :
+      # Remove non-PPD files from the PPD file directories
       find usr/share/foomatic/db/source/PPD -type f \! -name '*.ppd' -print0 | xargs -0 rm || :
-      for f in `find usr/share/foomatic/db/source/PPD -name '*.ppd'`; do perl -p -i -e 's/^\*CloseUI(\s+)/*CloseUI:\1/' $f; perl -p -i -e 's/\*1284DeviceId/*1284DeviceID/' $f; perl -p -i -e 's/\*(cupsFilter2?:)/\*%\1/' $f; done
+      # Correct common errors in PPD files: "*CloseUI" without ':' and
+      # "*1284DeviceId" instead of "*1284DeviceID"
+      for f in `find usr/share/foomatic/db/source/PPD -name '*.ppd'`; do perl -p -i -e 's/^\*CloseUI(\s+)/*CloseUI:\1/' $f; perl -p -i -e 's/\*1284DeviceId/*1284DeviceID/' $f; done
+      # Remove drivers which need external filters we cannot get hold on
+      # Note that the "./configure; make install" process of foomatic-db
+      # already removed driver entries marked obsolete and entries without
+      # driver command line prototype.
       ( cd usr/share/foomatic/db/source/driver; \
         rm bjc800j.xml; \
         rm c2070.xml; \
@@ -366,10 +383,13 @@ parts:
         rm pentaxpj.xml; \
       	rm ppmtomd.xml; \
       )
+      # Pre-build all PPDs from the Foomatic XML data
       FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
+      # Compress the Foomatic PPDs in a self-extracting archive
       $SNAPCRAFT_STAGE/bin/pyppd -v -o foomatic-ppds ppd
       rm -rf ppd
       mv usr/share/foomatic/db/source/PPD ppd
+      # Compress the manufacturer PPDs in a self-extracting archive
       $SNAPCRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
       #snapcraftctl build
     build-packages:
@@ -402,6 +422,9 @@ parts:
     after: [pyppd]
 
   extra-filters:
+    # Install additional filters, supported by the Foomatic PPDs
+    # HPIJS is used here for non-HP PCL 5c/e printers, works better
+    # than Ghostscript's built-in drivers
     plugin: nil
     source: .
     stage-packages:
@@ -440,6 +463,19 @@ parts:
     source: .
     make-parameters:
       - LDFLAGS="$LDFLAGS -ljpeg"
+    # To improve convenience for developers (and everyone who wants to
+    # build from source), we do a "make clean" before "make" here,
+    # because if we had done "make" off-Snap, directly in the source
+    # tree and afterwards build the Snap with snapcraft, the build
+    # sucks in our local binary of ghostscript-printer-app instead of
+    # compiling its own one in the Snap harness with the appropriate
+    # libraries, ending up with the Snap containing an executable
+    # which does not work inside the Snap. The "make clean" removes
+    # any accidentally grabbed binary.
+    override-build: |
+      set -eux
+      make clean
+      snapcraftctl build
     build-packages:
       - libusb-1.0-0-dev
     stage-packages:
