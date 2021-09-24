@@ -53,11 +53,24 @@ requests](https://github.com/OpenPrinting/ghostscript-printer-app).
   is important as we do not have the printers for testing.
 
 - We use the printer's IEEE-1284 device ID to identify manufacturer
-  and model of the printer and look forexplicit driver support for
+  and model of the printer and look for explicit driver support for
   this model. If we do not find it, we check the CMD: field of the ID
   to see whetrher the printer supports any common data format,
   currently PostScript, PCL-6/XL, PCL 5c, and PCL 5e to select a
   generic driver.
+
+- Available printer devices are discovered (and used) with CUPS'
+  backends and not with PAPPL's own backends. This way quirk
+  workarounds for USB printers with compatibility problems are used
+  (and are editable) and any driver's output can get sent to the
+  printer via IPP, IPPS (encrypted!), and LPD in addition to socket
+  (usually port 9100). The SNMP backend can get configured (community,
+  address scope).
+
+- If you have an unusual system configuration or a personal firewall
+  your printer will perhaps not get discovered. In this situation the
+  fully manual "Network Printer" entry in combination with the
+  hostname/IP field can be helpful.
 
 - Standard job IPP attributes are mapped to the driver's option
   settings best fitting to them so that users can print from any type
@@ -170,6 +183,15 @@ for more options.
 Use the "-o log-level=debug" argument for verbose logging in your
 terminal window.
 
+You can add files to `/var/snap/ghostscript-printer-app/common/usb/`
+for additional USB quirk rules. Edit the existing files only for quick
+tests, as they get replaced at every update of the Snap (to introduce
+new rules).
+
+You can edit the
+`/var/snap/ghostscript-printer-app/common/cups/snmp.conf` file for
+configuring SNMP network printer discovery.
+
 
 ## BUILDING WITHOUT SNAP
 
@@ -217,6 +239,17 @@ PPD_PATHS=/path/to/my/ppds:/my/second/place ./ghostscript-printer-app server
 
 Simply put a colon-separated list of any amount of paths into the
 variable. Creating a wrapper script is recommended.
+
+This Printer Application uses CUPS' backends and not PAPPL's, meaning
+that for USB printers CUPS' USB quirk workarounds for compatibility
+problems are used, network printers can also be used with IPP, IPPS,
+and LPD protocols, and SNMP printer discovery is configurable.
+
+USB Quirk rules in `/usr/share/cups/usb` and the `/etc/cups/snmp.conf`
+file can get edited if needed.
+
+Make sure you have Ghostscript, CUPS (at least its backends), and the
+desired printer drivers (if not built into Ghostscript) installed.
 
 For access to the test page `testpage.ps` use the TESTPAGE_DIR
 environment variable:
