@@ -123,6 +123,20 @@ the Snap Store:
 sudo snap install --edge ghostscript-printer-app
 ```
 
+It will currently need manual connection of some interfaces:
+
+```
+sudo snap connect ghostscript-printer-app:avahi-control
+sudo snap connect ghostscript-printer-app:raw-usb
+```
+
+Re-start the Snap after connecting the interfaces:
+
+```
+sudo snap stop ghostscript-printer-app
+sudo snap start ghostscript-printer-app
+```
+
 Then follow the instructions below for setting it up.
 
 To build the Snap by yourself, in the main directory of this
