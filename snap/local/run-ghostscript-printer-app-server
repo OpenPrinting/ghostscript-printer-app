@@ -5,6 +5,7 @@
 # Create directories and define environment variables
 mkdir -p $SNAP_COMMON/usb
 mkdir -p $SNAP_COMMON/cups
+mkdir -p $SNAP_COMMON/pnm2ppa
 export BACKEND_DIR=$SNAP/usr/lib/ghostscript-printer-app/backend
 export USB_QUIRK_DIR=$SNAP_COMMON
 export CUPS_SERVERROOT=$SNAP_COMMON/cups
@@ -14,5 +15,9 @@ cp $BACKEND_DIR/*.usb-quirks $USB_QUIRK_DIR/usb 2>/dev/null || :
 if [ ! -f $CUPS_SERVERROOT/snmp.conf ]; then
     cp $BACKEND_DIR/snmp.conf $CUPS_SERVERROOT 2>/dev/null || :
 fi
+if [ ! -f $SNAP_COMMON/pnm2ppa/pnm2ppa.conf ]; then
+    cp $SNAP/etc/pnm2ppa.conf $SNAP_COMMON/pnm2ppa 2>/dev/null || :
+fi
 
 exec $SNAP/scripts/run-ghostscript-printer-app -o log-file=$SNAP_COMMON/ghostscript-printer-app.log server "$@"
+#exec $SNAP/scripts/run-ghostscript-printer-app -o log-level=debug -o log-file=$SNAP_COMMON/ghostscript-printer-app.log server "$@"

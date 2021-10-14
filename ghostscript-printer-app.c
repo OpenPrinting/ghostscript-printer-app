@@ -162,7 +162,9 @@ main(int  argc,				// I - Number of command-line arguments
     SYSTEM_WEB_IF_FOOTER,     // Footer for web interface (in HTML)
     PR_COPTIONS_QUERY_PS_DEFAULTS | // pappl-retrofit special features to be
     PR_COPTIONS_NO_GENERIC_DRIVER | // used
+#if !SNAP
     PR_COPTIONS_USE_ONLY_MATCHING_NICKNAMES |
+#endif // !SNAP
     PR_COPTIONS_NO_PAPPL_BACKENDS |
     PR_COPTIONS_CUPS_BACKENDS,
     ghostscript_autoadd,      // Auto-add (driver assignment) callback

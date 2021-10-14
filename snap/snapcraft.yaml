@@ -87,7 +87,7 @@ parts:
       - libusb-1.0-0
     prime:
       - -etc/fonts
-      - -lib
+      - lib/*/lib*.so*
       - -var
       - -usr/include
       - -usr/lib/pkgconfig
@@ -118,9 +118,13 @@ parts:
       - pkg-config
       - perl-base
     prime:
+      - lib/*/lib*.so*
       - -var
+      - -usr/var
       - -usr/bin/test-printer-app
       - -usr/include
+      - -usr/lib/*.a
+      - -usr/lib/*.la
       - -usr/lib/pkgconfig
       - -usr/lib/test-printer-app
       - -usr/share/
@@ -190,8 +194,11 @@ parts:
     source: https://github.com/OpenPrinting/cups
     source-type: git
     plugin: autotools
-    # We only need libcups (with headers, ...), the rastertohp filter
-    # (for the PCL-5 PPD files from Ricoh and OEM), and the backends
+    # We only need libcups (with headers, ...), the rastertoepson,
+    # rastertohp, and rastertolabel filters (for the PCL-5 PPD files from
+    # Ricoh and OEM, and for sample.drv PPDs), the backends,
+    # ppdc plus *.defs files (for PPD files provided via *.drv),
+    # sample.drv file
     override-build: |
       set -eux
       ./configure --sysconfdir=/var/snap/ghostscript-printer-app/common/
@@ -199,12 +206,17 @@ parts:
       make
       cd ..
       cd filter
+      make rastertoepson
       make rastertohp
+      make rastertolabel
       cd ..
       cd backend
       # Have USB quirk files in user-modifiable space for debugging
       perl -p -i -e 's/"CUPS_DATADIR"/"USB_QUIRK_DIR"/' usb-libusb.c
       make snmp dnssd socket ipp ipps lpd usb
+      cd ..
+      cd ppdc
+      make ppdc
       cd ..
       mkdir -p $SNAPCRAFT_STAGE/usr/lib
       cp cups/libcups*.a $SNAPCRAFT_STAGE/usr/lib/
@@ -214,12 +226,24 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/bin
       cp cups-config $SNAPCRAFT_STAGE/usr/bin/
       mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertoepson $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
       cp filter/rastertohp $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertolabel $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
       mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/
       ( cd backend; \
         cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/ \
       )
       cp conf/snmp.conf $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/
+      cp ppdc/ppdc $SNAPCRAFT_STAGE/usr/bin/
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/cups/ppdc/
+      cp data/*.defs data/*.h $SNAPCRAFT_STAGE/usr/share/cups/ppdc/
+      # Compile sample.drv into PPD files
+      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd ppdc/sample.drv
+      # Compress the compiled PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o cups-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv cups-ppds $SNAPCRAFT_STAGE/usr/share/ppd
       #snapcraftctl build
     build-packages:
       - patch
@@ -252,6 +276,7 @@ parts:
       - libxml2
     prime:
       - -etc/fonts
+      - lib/*/lib*.so*
       - -var
       - -usr/include
       - -usr/lib/pkgconfig
@@ -260,10 +285,13 @@ parts:
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
+      - usr/share/ppd/cups-ppds
       - usr/lib
       - usr/lib/libcups.so.2
       - usr/lib/libcupsimage.so.2
+      - usr/lib/ghostscript-printer-app/filter/rastertoepson
       - usr/lib/ghostscript-printer-app/filter/rastertohp
+      - usr/lib/ghostscript-printer-app/filter/rastertolabel
       - usr/lib/ghostscript-printer-app/backend/snmp
       - usr/lib/ghostscript-printer-app/backend/dnssd
       - usr/lib/ghostscript-printer-app/backend/socket
@@ -273,14 +301,17 @@ parts:
       - usr/lib/ghostscript-printer-app/backend/usb
       - usr/lib/ghostscript-printer-app/backend/org.cups.usb-quirks
       - usr/lib/ghostscript-printer-app/backend/snmp.conf
+    after: [pyppd]
 
   cups-filters:
     source: https://github.com/OpenPrinting/cups-filters
     source-type: git
     plugin: autotools
-    # We only need the 3 libraries: libcupsfilters, libppd, and libfontembed
-    # and foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
-    # also for the PCL-XL PPDs from Ricoh and OEM)
+    # We need the 3 libraries: libcupsfilters, libppd, and libfontembed,
+    # foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
+    # also for the PCL-XL PPDs from Ricoh and OEM) and the rastertoepson,
+    # rastertopclx, and texttotext filters (for the included PPD files),
+    # and also all PPD and *.drv files
     override-build: |
       set -eux
       ./autogen.sh
@@ -289,10 +320,14 @@ parts:
       make libcupsfilters.la
       make libfontembed.la
       make foomatic-rip
+      make rastertoescpx
+      make rastertopclx
       mkdir -p $SNAPCRAFT_STAGE/usr/lib
       cp .libs/lib* $SNAPCRAFT_STAGE/usr/lib/
       mkdir -p ../install
       cp .libs/foomatic-rip ../install
+      cp .libs/rastertoescpx ../install
+      cp .libs/rastertopclx ../install
       mkdir -p $SNAPCRAFT_STAGE/usr/include/ppd
       cp ppd/*.h $SNAPCRAFT_STAGE/usr/include/ppd/
       mkdir -p $SNAPCRAFT_STAGE/usr/include/cupsfilters
@@ -301,6 +336,16 @@ parts:
       cp fontembed/*.h $SNAPCRAFT_STAGE/usr/include/fontembed/
       mkdir -p $SNAPCRAFT_STAGE/usr/lib/pkgconfig
       cp *.pc $SNAPCRAFT_STAGE/usr/lib/pkgconfig/
+      # Compile cupsfilters.drv into PPD files
+      $SNAPCRAFT_STAGE/usr/bin/ppdc -I filter -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd drv/cupsfilters.drv
+      # Remove PPD files which are not useful in the Printer Application
+      rm ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
+      # Compress the included PPD files, both ready-made and compiled
+      cp ppdfiles/*.ppd ppd
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o cups-filters-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv cups-filters-ppds $SNAPCRAFT_STAGE/usr/share/ppd
       #snapcraftctl build
     build-packages:
       - gettext
@@ -334,6 +379,8 @@ parts:
       - libwebp6
     organize:
       foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
+      rastertoescpx: usr/lib/ghostscript-printer-app/filter/rastertoescpx
+      rastertopclx: usr/lib/ghostscript-printer-app/filter/rastertopclx
     prime:
       - -etc/fonts
       - -var
@@ -344,6 +391,7 @@ parts:
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
+      - usr/share/ppd/cups-filters-ppds
       - usr/lib
       - usr/lib/libcupsfilters.so.1
       - -usr/lib/libcupsfilters.so.1.0.0
@@ -353,7 +401,7 @@ parts:
       - -usr/lib/libfontembed.so.1.0.0
       - usr/bin/pdftops
       - usr/lib/ghostscript-printer-app
-    after: [cups, qpdf, ghostscript]
+    after: [cups, qpdf, ghostscript, pyppd]
 
   pyppd:
     source: https://github.com/OpenPrinting/pyppd
@@ -406,8 +454,8 @@ parts:
       # Compress the Foomatic PPDs in a self-extracting archive
       $SNAPCRAFT_STAGE/bin/pyppd -v -o foomatic-ppds ppd
       rm -rf ppd
-      mv usr/share/foomatic/db/source/PPD ppd
       # Compress the manufacturer PPDs in a self-extracting archive
+      mv usr/share/foomatic/db/source/PPD ppd
       $SNAPCRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
       #snapcraftctl build
     build-packages:
@@ -439,48 +487,251 @@ parts:
       - -var
     after: [pyppd]
 
-  extra-filters:
-    # Install additional filters, supported by the Foomatic PPDs
-    # HPIJS is used here for non-HP PCL 5c/e printers, works better
-    # than Ghostscript's built-in drivers
-    plugin: nil
-    source: .
+  hplip:
+    # We need only the hpijs executable (for the Foomatic PPDs HPIJS is used
+    # here for non-HP PCL 5c/e printers, works better than Ghostscript's
+    # built-in drivers
+    #
+    # We use the Debian package source instead of the upstream source code
+    # of HPLIP as the Debian package has ~80 patches fixing bugs which are
+    # reported upstream but the patches not adopted upstream.
+    # This way we should have the same user experience in terms of reliability
+    # and quality as with the Debian package.
+    # Note that the repository has all patches already applied, so we do
+    # not need to apply them before building.
+    # Debian source
+    source: https://salsa.debian.org/printing-team/hplip.git
+    source-type: git
+    source-branch: debian/3.21.8+dfsg0-2
+    # Upstream source
+    #source: https://sourceforge.net/projects/hplip/files/hplip/3.21.8/hplip-3.21.8.tar.gz
+    plugin: autotools
+    build-environment:
+      - PYTHON: python3
+      - LD_LIBRARY_PATH: $SNAPCRAFT_STAGE/usr/lib:$LD_LIBRARY_PATH
+      - CUPS_DATADIR: $SNAPCRAFT_STAGE/usr/share/cups
+      - on arm64:
+        - BUILDARCH: aarch64-unknown-linux-gnu
+      - else:
+        - BUILDARCH: $SNAPCRAFT_ARCH_TRIPLET
+    # Paremeter list here only needed for upstream source, but no need to
+    # comment out for Debian source
+    autotools-configure-parameters:
+      - --build=$BUILDARCH
+      - --prefix=/usr
+      - --disable-foomatic-rip-hplip-install
+      - --without-docdir
+      - --without-htmldir
+      - --without-hpppddir
+      - --without-drvdir
+      - --without-icondir
+      - --disable-hpcups-install
+      - --disable-cups-drv-install
+      - --disable-cups-ppd-install
+      - --enable-hpijs-install
+      - --disable-foomatic-drv-install
+      - --disable-foomatic-ppd-install
+      - --enable-network-build
+      - --disable-class-driver
+      - --disable-scan-build
+      - --disable-gui-build
+      - --disable-fax-build
+      - --disable-qt3
+      - --disable-qt4
+      - --disable-qt5
+      - --disable-policykit
+    # We need only the hpijs executable
+    override-build: |
+      set -eux
+      # Correct hard-coded /etc/hp/ path in Makefile
+      perl -p -i -e 's:/etc/hp:/snap/ghostscript-printer-app/current/etc/hp:' Makefile*
+      # Do the "./configure" (for Debian source)
+      sh debian/autogen.sh
+      ./configure \
+        --build=$BUILDARCH \
+        --prefix=/usr \
+        --disable-foomatic-rip-hplip-install \
+        --without-docdir \
+        --without-htmldir \
+        --without-hpppddir \
+        --without-drvdir \
+        --without-icondir \
+        --disable-hpcups-install \
+        --disable-cups-drv-install \
+        --disable-cups-ppd-install \
+        --enable-hpijs-install \
+        --disable-foomatic-drv-install \
+        --disable-foomatic-ppd-install \
+        --enable-network-build \
+        --disable-class-driver \
+        --disable-scan-build \
+        --disable-gui-build \
+        --disable-fax-build \
+        --disable-qt3 \
+        --disable-qt4 \
+        --disable-qt5 \
+        --disable-policykit
+      # Following step needed because of the Debian patches (for Debian source)
+      # Compress various files before building, they are needed for the build,
+      # and were compressed in the non-repacked upstream tarballs
+      find . -name '*.ppd' | xargs gzip -f
+      find data/ -regextype posix-extended -regex '.*\.(ldl|pcl|ps|pdf)' | xargs gzip -f
+      # Following step needed because of the Debian patches (for Debian source)
+      # Rebuild the .drv.in files from drv.in.template
+      python3 ./dat2drv.py
+      # Correct hard-coded paths in C/C++ source code
+      # The /etc/... and /usr/... paths in these files do not need to get
+      # corrected, only the /var/... ones
+      perl -p -i -e 's:\"/var/lib/hp:\"/var/snap/ghostscript-printer-app/common/var/:' common/utils.[ch]
+      # Do the "./configure; make; make install" (for upstream source)
+      # snapcraftctl build
+      # Do the "make; make install" (for Debian source)
+      make
+      make DESTDIR=`pwd`/../install install
+      # Correct hard-coded paths in hplip.conf
+      ( cd ../install/snap/ghostscript-printer-app/current/etc/hp; \
+        perl -p -i -e 's:/var/:/var/snap/ghostscript-printer-app/common/var/:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/:/snap/ghostscript-printer-app/current/usr/share/:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/ppd/hplip:/usr/share/ppd:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/ppd/HP:/usr/share/ppd:' hplip.conf; \
+        perl -p -i -e 's:/usr/lib/cups/:/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/:' hplip.conf; \
+      )
+    build-packages:
+      - ubuntu-dev-tools
+      - dpkg-dev
+      - fakeroot
+      - automake
+      - gawk
+      - python3-dev
+      - libpython3-dev
+      - fdupes
+      - libavahi-client-dev
+      - libavahi-core-dev
+      - libdbus-1-dev
+      - libjpeg-dev
+      - libsnmp-dev
+      - libssl-dev
+      - libtool
+      - libudev-dev
+      - libusb-1.0-0-dev
+      - perl-base
+      - python3
+      - xz-utils
+      - pyppd
     stage-packages:
-      - libidn11
-      - libhpmud0
-      - libperl5.30
       - libsnmp35
-      - libusb-1.0-0
-      - printer-driver-c2050
-      - printer-driver-cjet
-      - printer-driver-min12xxw
-      - printer-driver-pnm2ppa
-      - printer-driver-hpijs
-    stage:
-      - -usr/bin/gs
-      - -usr/bin/ps2epsi
+    organize:
+      snap/ghostscript-printer-app/current/etc/hp/hplip.conf: etc/hp/hplip.conf
     prime:
-      - -etc
-      - lib
-      - usr/bin
-      - usr/lib
-      - -usr/share/ppd/hplip
-      - -usr/share/apport
-      - -usr/share/bug
-      - -usr/share/cups
+      - lib/*/lib*.so*
+      - -etc/udev*
+      - etc/hp/hplip.conf
+      - -var
+      - usr/bin/hpijs
+      - usr/lib/libhpip.so*
+      - usr/lib/libhpmud.so*
+      - usr/lib/libhpdiscovery.so*
+      - usr/lib/*/lib*.so*
+      - -usr/lib/python*
+      - -usr/lib/systemd
+      - -usr/lib/cups
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
       - -usr/share/man
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
-      - -usr/share/foomatic
-      - -usr/share/pnm2ppa
-      - -var
+      - -snap
+    after: [cups]
+
+  # Unmaintained printer drivers which come as a filter to convert generic
+  # raster output of GhostScript into the printer's data format. The PPDs
+  # for these drivers come as part of Foomatic, so we build and install
+  # only the filters here.
+
+  c2050:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    source: https://salsa.debian.org/printing-team/c2050.git
+    source-type: git
+    source-branch: debian/0.3b-8
+    plugin: make
+    override-build: |
+      set -eux
+      make -j2
+      mkdir -p $SNAPCRAFT_STAGE/usr/bin
+      cp c2050 $SNAPCRAFT_STAGE/usr/bin
+      #snapcraftctl build
+    prime:
+      - usr/bin/c2050
+
+  cjet:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    source: https://salsa.debian.org/printing-team/cjet.git
+    source-type: git
+    source-branch: debian/0.8.9-9
+    plugin: make
+    override-build: |
+      set -eux
+      make -j2
+      mkdir -p $SNAPCRAFT_STAGE/usr/bin
+      cp cjet $SNAPCRAFT_STAGE/usr/bin
+      #snapcraftctl build
+    prime:
+      - usr/bin/cjet
+
+  min12xxw:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://www.hinterbergen.de/mala/min12xxw/
+    source: https://salsa.debian.org/printing-team/min12xxw.git
+    source-type: git
+    source-branch: debian/0.0.9-11
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      snapcraftctl build
+    build-packages:
+      - autoconf
+    stage:
+      - usr/bin/min12xxw
+    prime:
+      - usr/bin/min12xxw
+      - -usr/share
+
+  pnm2ppa:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://pnm2ppa.sourceforge.net/
+    source: https://salsa.debian.org/printing-team/pnm2ppa.git
+    source-type: git
+    source-branch: debian/1.13-12
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --sysconfdir=/etc
+    override-build: |
+      set -eux
+      perl -p -i -e 's/^\s*version\s+0\s+/version 710 /' pnm2ppa.conf
+      perl -p -i -e 's:(\s+)SYSCONFDIR "(/pnm2ppa\.):\1"/var/snap/ghostscript-printer-app/common/pnm2ppa\2:' pnm2ppa.h
+      snapcraftctl build
+    prime:
+      - etc/pnm2ppa.conf
+      - usr/bin/calibrate_ppa
+      - usr/bin/pnm2ppa
+      - -usr/share
 
   ghostscript-printer-app:
     plugin: make
     source: .
     make-parameters:
       - LDFLAGS="$LDFLAGS -ljpeg"
+      - SNAP=1
     # To improve convenience for developers (and everyone who wants to
     # build from source), we do a "make clean" before "make" here,
     # because if we had done "make" off-Snap, directly in the source
@@ -506,8 +757,10 @@ parts:
       - -usr/lib/ghostscript-printer-app
     prime:
       - -var
+      - lib/*/lib*.so*
+      - -lib/systemd
       - -usr/share/man
-    after: [pappl-retrofit, pappl, cups-filters, foomatic-db, extra-filters]
+    after: [pappl-retrofit, pappl, cups-filters, foomatic-db]
 
   mdns-lookup:
     # Make resolution of ".local" host names (Zero-Conf/mDNS/DNS-SD)

@@ -28,6 +28,9 @@ unitdir 	:=	$(DESTDIR)`pkg-config --variable=systemdsystemunitdir systemd`
 # Compiler/linker options...
 OPTIM		=	-Os -g
 CFLAGS		+=	`pkg-config --cflags pappl` `cups-config --cflags` `pkg-config --cflags libppd` `pkg-config --cflags libcupsfilters` `pkg-config --cflags libpappl-retrofit` $(OPTIM)
+ifdef SNAP
+CFLAGS          +=      -DSNAP=$(SNAP)
+endif
 LDFLAGS		+=	$(OPTIM) `cups-config --ldflags`
 LIBS		+=	`pkg-config --libs pappl` `cups-config --image --libs` `pkg-config --libs libppd` `pkg-config --libs libcupsfilters` `pkg-config --libs libpappl-retrofit`
 
