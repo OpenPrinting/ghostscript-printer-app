@@ -712,7 +712,13 @@ parts:
     source-type: git
     source-branch: debian/1.13-12
     plugin: autotools
+    build-environment:
+      - on arm64:
+        - BUILDARCH: aarch64-linux-gnu
+      - else:
+        - BUILDARCH: $SNAPCRAFT_ARCH_TRIPLET
     autotools-configure-parameters:
+      - --build=$BUILDARCH
       - --prefix=/usr
       - --sysconfdir=/etc
     override-build: |
