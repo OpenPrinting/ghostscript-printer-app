@@ -694,6 +694,7 @@ parts:
       - --prefix=/usr
     override-build: |
       set -eux
+      # Refresh build system, because of the Debian patches
       autoreconf --install
       snapcraftctl build
     build-packages:
@@ -712,20 +713,21 @@ parts:
     source-type: git
     source-branch: debian/1.13-12
     plugin: autotools
-    build-environment:
-      - on arm64:
-        - BUILDARCH: aarch64-linux-gnu
-      - else:
-        - BUILDARCH: $SNAPCRAFT_ARCH_TRIPLET
     autotools-configure-parameters:
-      - --build=$BUILDARCH
       - --prefix=/usr
       - --sysconfdir=/etc
     override-build: |
       set -eux
+      # "Unlock" config file
       perl -p -i -e 's/^\s*version\s+0\s+/version 710 /' pnm2ppa.conf
+      # Set config file path (we copy the config file to an editable place
+      # on server startup)
       perl -p -i -e 's:(\s+)SYSCONFDIR "(/pnm2ppa\.):\1"/var/snap/ghostscript-printer-app/common/pnm2ppa\2:' pnm2ppa.h
+      # Update config.guess/config.sub, pnm2ppa seems to be of pre-arm64 era
+      cp /usr/share/misc/config.* .
       snapcraftctl build
+    build-packages:
+      - autotools-dev
     prime:
       - etc/pnm2ppa.conf
       - usr/bin/calibrate_ppa
