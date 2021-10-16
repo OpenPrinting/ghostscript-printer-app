@@ -765,6 +765,7 @@ parts:
       - --prefix=/usr
     override-build: |
       set -eux
+      autoreconf --install
       snapcraftctl build
       # Compile *.drv files into PPD files
       $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd */*.drv
@@ -774,7 +775,7 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
-      - automake1.11
+      - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
@@ -795,13 +796,14 @@ parts:
       - --prefix=/usr
     override-build: |
       set -eux
+      autoreconf --install
       snapcraftctl build
       # Compress the included PPD files
       $SNAPCRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
-      - automake1.11
+      - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
