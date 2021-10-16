@@ -656,7 +656,7 @@ parts:
     # GIT instead
     source: https://salsa.debian.org/printing-team/c2050.git
     source-type: git
-    source-branch: debian/0.3b-8
+    source-branch: debian/0.3b-9
     plugin: make
     override-build: |
       set -eux
@@ -759,7 +759,7 @@ parts:
     # Original homepage: https://sourceforge.net/projects/cupsdriverkodak/
     source: https://salsa.debian.org/printing-team/c2esp.git
     source-type: git
-    source-branch: debian/27-10
+    source-branch: debian/27-11
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
