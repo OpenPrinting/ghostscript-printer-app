@@ -773,6 +773,8 @@ parts:
       rm ppd/*.ppd
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    build-packages:
+      - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
