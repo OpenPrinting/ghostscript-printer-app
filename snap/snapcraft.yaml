@@ -800,6 +800,8 @@ parts:
       $SNAPCRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    build-packages:
+      - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
@@ -858,6 +860,7 @@ parts:
       mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
       mv foo2zjs-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
+      - automake
       - dc
     stage-packages:
       - psutils
