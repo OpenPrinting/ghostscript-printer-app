@@ -837,6 +837,8 @@ parts:
       perl -p -i -e  's:\$PREFIX/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
       perl -p -i -e  's:/usr/share/":/var/snap/ghostscript-printer-app/common/foo2zjs/":' $SNAPCRAFT_PART_INSTALL/usr/bin/getweb
       perl -p -i -e  's:/usr/share/\$FOO:/var/snap/ghostscript-printer-app/common/foo2zjs/\$FOO:' $SNAPCRAFT_PART_INSTALL/usr/bin/printer-profile*
+      # Use $TNPDIR for temporary directory
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Add "-dNOINTERPOLATE" to the Ghostscript command lines to make
       # Ghostscript rendering the pages significantly faster
       perl -p -i -e 's/dNOPAUSE/dNOPAUSE -dNOINTERPOLATE/g' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
