@@ -774,7 +774,7 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
-      - automake
+      - automake1.11
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
@@ -801,7 +801,7 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
-      - automake
+      - automake1.11
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
