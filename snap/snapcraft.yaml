@@ -129,6 +129,7 @@ parts:
       - -usr/lib/test-printer-app
       - -usr/share/
       - -snap
+      - usr/lib/libpappl-retrofit.so*
     after: [patches, cups, cups-filters, pappl]
 
   qpdf:
@@ -663,9 +664,17 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/bin
       cp c2050 $SNAPCRAFT_STAGE/usr/bin
       #snapcraftctl build
+    stage-packages:
+      - libjbig0
+      - libjpeg-turbo8
+      - libpng16-16
+      - libtiff5
+      - libwebp6
     prime:
       - usr/bin/c2050
-
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
   cjet:
     # Upstream source is not available any more, using Debian packaging
     # GIT instead
@@ -734,6 +743,131 @@ parts:
       - usr/bin/pnm2ppa
       - -usr/share
 
+  # Unmaintained printer drivers which come as complete package of either
+  # CUPS filter(s) or filters to use together witrh Ghostscript and
+  # foomatic-rip and of PPD files or PPD file generators (*.drv files for
+  # /usr/share/cups/drv or executables for /usr/lib/cups/driver)
+
+  c2esp:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://sourceforge.net/projects/cupsdriverkodak/
+    source: https://salsa.debian.org/printing-team/c2esp.git
+    source-type: git
+    source-branch: debian/27-10
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      snapcraftctl build
+      # Compile *.drv files into PPD files
+      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd */*.drv
+      # Compress the compiled PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o c2esp-ppds ppd
+      rm ppd/*.ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/c2esp-ppds
+    after: [cups, pyppd]
+
+  dymo-cups-drivers:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage:
+    #https://www.dymo-label-printers.co.uk/news/download-dymo-sdk-for-linux.html
+    source: https://salsa.debian.org/printing-team/dymo-cups-drivers.git
+    source-type: git
+    source-branch: debian/1.4.0-10
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      snapcraftctl build
+      # Compress the included PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/dymo-ppds
+      - -usr/share/cups
+    after: [cups, pyppd]
+
+  foo2zjs:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    # We do support color profiles in the sub-directories of
+    # /var/snap/ghostscript-printer-app/common/foo2zjs but we do not
+    # support automatic loading of firmware files. For those printers the
+    # HPLIP Printer Application (with plugin loaded in-app) should be used.
+    source: https://salsa.debian.org/printing-team/foo2zjs.git
+    source-type: git
+    source-branch: debian/20200505dfsg0-2
+    plugin: nil
+    override-build: |
+      set -eux
+      cp printer-profile.in printer-profile
+      # Adjust paths in Makefile
+      cp Makefile Makefile.orig
+      perl -p -i -e  's:\$\(PREFIX\)/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' Makefile
+      make all PREFIX=/snap/ghostscript-printer-app/current/usr CUPS_SERVERBIN=$SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app CUPS_DEVEL=1 CUPS_GOODAPI=1
+      cp Makefile.orig Makefile
+      make install PREFIX=$SNAPCRAFT_PART_INSTALL/usr CUPS_SERVERBIN=$SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app
+      # Install missing files
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin/
+      cp getweb $SNAPCRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      rm -f $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      cp command2foo2lava-pjl $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      # Adjust the paths to the auxiliary files
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:\$PREFIX/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:/usr/share/":/var/snap/ghostscript-printer-app/common/foo2zjs/":' $SNAPCRAFT_PART_INSTALL/usr/bin/getweb
+      perl -p -i -e  's:/usr/share/\$FOO:/var/snap/ghostscript-printer-app/common/foo2zjs/\$FOO:' $SNAPCRAFT_PART_INSTALL/usr/bin/printer-profile*
+      # Add "-dNOINTERPOLATE" to the Ghostscript command lines to make
+      # Ghostscript rendering the pages significantly faster
+      perl -p -i -e 's/dNOPAUSE/dNOPAUSE -dNOINTERPOLATE/g' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Set up the PPD file collection
+      cp -r PPD ppd
+      # Remove the PPDs of printers which need their firmware loaded whenever
+      # they are turned on. User should use the HPLIP Printer Application
+      # with them
+      for model in `cat Makefile | grep install-usermap | cut -d j -f 2 | cut -d ' ' -f 1`; do
+        rm ppd/HP-LaserJet_$model.ppd
+      done
+      # Compress the included PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o foo2zjs-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv foo2zjs-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - dc
+    stage-packages:
+      - psutils
+      - bsdutils
+    stage:
+      - usr/bin/*
+      - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      - usr/share/ppd/foo2zjs-ppds
+      - usr/share/foo2*
+    prime:
+      - usr/bin/*
+      - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      - usr/share/ppd/foo2zjs-ppds
+      - usr/share/foo2*
+      - -usr/share/cups
+      - -usr/share/doc
+      - -usr/share/man
+    after: [cups, pyppd]
+
   ghostscript-printer-app:
     plugin: make
     source: .
@@ -762,12 +896,17 @@ parts:
       - libtiff5
       - libwebp6
     stage:
+      - usr/bin/ghostscript-printer-app
       - -usr/lib/ghostscript-printer-app
+      - usr/share/ghostscript-printer-app/testpage.ps
     prime:
       - -var
+      - usr/bin/ghostscript-printer-app
       - lib/*/lib*.so*
+      - usr/lib/lib*.so*
       - -lib/systemd
       - -usr/share/man
+      - usr/share/ghostscript-printer-app/testpage.ps
     after: [pappl-retrofit, pappl, cups-filters, foomatic-db]
 
   mdns-lookup:
