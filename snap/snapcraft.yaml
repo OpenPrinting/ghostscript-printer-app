@@ -660,6 +660,11 @@ parts:
     plugin: make
     override-build: |
       set -eux
+      # Avoid implicit declaration as "int"
+      perl -p -i -e 's/register i\b/register int i/' c2050.c
+      perl -p -i -e 's/^SweepBuffer_Init\b/void SweepBuffer_Init/' c2050.c
+      # Increase size of buffer to avoind segfault (also passes valgrind then)
+      perl -p -i -e 's/SweepBuffer_Init\s*\(\s*&blkbuffer,\s+blkbytesize\s*\)/SweepBuffer_Init(&blkbuffer, blkbytesize * 2)/' c2050.c
       make -j2
       mkdir -p $SNAPCRAFT_STAGE/usr/bin
       cp c2050 $SNAPCRAFT_STAGE/usr/bin
