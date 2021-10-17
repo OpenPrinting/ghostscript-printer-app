@@ -601,6 +601,7 @@ parts:
       - ubuntu-dev-tools
       - dpkg-dev
       - fakeroot
+      - autoconf
       - automake
       - gawk
       - python3-dev
@@ -775,6 +776,7 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
+      - autoconf
       - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
@@ -803,6 +805,7 @@ parts:
       mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
       mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
     build-packages:
+      - autoconf
       - automake
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
@@ -843,7 +846,7 @@ parts:
       perl -p -i -e  's:\$PREFIX/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
       perl -p -i -e  's:/usr/share/":/var/snap/ghostscript-printer-app/common/foo2zjs/":' $SNAPCRAFT_PART_INSTALL/usr/bin/getweb
       perl -p -i -e  's:/usr/share/\$FOO:/var/snap/ghostscript-printer-app/common/foo2zjs/\$FOO:' $SNAPCRAFT_PART_INSTALL/usr/bin/printer-profile*
-      # Use $TNPDIR for temporary directory
+      # Use $TMPDIR for temporary directory
       perl -p -i -e  's:/tmp:\$TMPDIR:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Add "-dNOINTERPOLATE" to the Ghostscript command lines to make
       # Ghostscript rendering the pages significantly faster
@@ -862,11 +865,11 @@ parts:
       mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
       mv foo2zjs-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
-      - automake
       - dc
     stage-packages:
       - psutils
       - bsdutils
+      - dc
     stage:
       - usr/bin/*
       - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
@@ -877,6 +880,74 @@ parts:
       - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
       - usr/share/ppd/foo2zjs-ppds
       - usr/share/foo2*
+      - -usr/share/cups
+      - -usr/share/doc
+      - -usr/share/man
+    after: [cups, pyppd]
+
+  m2300w:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://sourceforge.net/projects/m2300w/
+    # There is a successor (native CUPS!) on
+    # https://github.com/ondrej-zary/m2x00w-cups
+    # but as it is a very invasive change we stay with m2300w for the
+    # 2300w qnd 2400w printers. We have no printers for testing.
+    # Color profiles in the appropriate sub-directories of
+    # /var/snap/ghostscript-printer-app/common/m2300w are supported.
+    source: https://salsa.debian.org/printing-team/m2300w.git
+    source-type: git
+    source-branch: debian/0.51-15
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      # Explicitly call "./configure; make; make install" as "make install"
+      # uses "INSTROOT" instead of "DESTDIR" (and in core20 the "autotools"
+      # plugin is hardwired to "DESTDIR")
+      #snapcraftctl build
+      autoreconf --install
+      ./configure --prefix=/usr
+      make -j2
+      make INSTROOT=$SNAPCRAFT_PART_INSTALL install
+      # Adjust the paths to the auxiliary files
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:SHARE=.*:SHARE=/var/snap/ghostscript-printer-app/common/m2300w:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Use $TMPDIR for temporary directory
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Remove unneeded old foomatic-rip file
+      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/m2300w/0.51/foomatic
+      # Package the two PPDs and their second version counterpart.
+      mkdir -p $SNAPCRAFT_PART_INSTALL/ppd
+      for n in 2300 2400; do
+        mv $SNAPCRAFT_PART_INSTALL/usr/share/cups/model/Minolta/magicolor_${n}W-m${n}w.ppd $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+        # Create copies for "KONICA MINOLTA" manufacturer name
+        perl -p -e 's/Minolta/KONICA MINOLTA/g' $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd > $SNAPCRAFT_PART_INSTALL/ppd/KONICA_MINOLTA-magicolor_${n}W-m2300w.ppd
+        # Correct originals for "Minolta" manufacturer name
+        perl -p -i -e 's/KONICA MINOLTA/Minolta/g' $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+      done
+      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/cups
+      # Compress the PPD files
+      ( cd $SNAPCRAFT_PART_INSTALL
+        $SNAPCRAFT_STAGE/bin/pyppd -v -o m2300w-ppds ppd
+        rm -rf ppd
+        mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+        mv m2300w-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      )
+    build-packages:
+      - autoconf
+      - automake
+    stage-packages:
+      - psutils
+    stage:
+      - usr/bin/*
+      - usr/share/ppd/m2300w-ppds
+      - usr/share/m2300w/*
+    prime:
+      - usr/bin/*
+      - usr/share/ppd/m2300w-ppds
+      - usr/share/m2300w/*
       - -usr/share/cups
       - -usr/share/doc
       - -usr/share/man

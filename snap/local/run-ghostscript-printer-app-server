@@ -7,6 +7,7 @@ mkdir -p $SNAP_COMMON/usb
 mkdir -p $SNAP_COMMON/cups
 mkdir -p $SNAP_COMMON/pnm2ppa
 mkdir -p $SNAP_COMMON/foo2zjs
+mkdir -p $SNAP_COMMON/m2300w/
 export BACKEND_DIR=$SNAP/usr/lib/ghostscript-printer-app/backend
 export USB_QUIRK_DIR=$SNAP_COMMON
 export CUPS_SERVERROOT=$SNAP_COMMON/cups
@@ -24,6 +25,8 @@ fi
 for d in $SNAP/usr/share/foo2*; do
     yes n | cp -ri $d $SNAP_COMMON/foo2zjs/ 2>/dev/null || :
 done
+# Initialize color profile directory of m2300w
+yes n | cp -ri $SNAP/usr/share/m2300w/*/psfiles $SNAP_COMMON/m2300w/ 2>/dev/null || :
 
 exec $SNAP/scripts/run-ghostscript-printer-app -o log-file=$SNAP_COMMON/ghostscript-printer-app.log server "$@"
 #exec $SNAP/scripts/run-ghostscript-printer-app -o log-level=debug -o log-file=$SNAP_COMMON/ghostscript-printer-app.log server "$@"
