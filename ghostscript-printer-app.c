@@ -37,6 +37,44 @@
 
 
 //
+// Spooling conversions
+//
+
+// When using the fxlinuxprint driver for the non-IPP-driverless PDF
+// printers from Fuji Xerox convert PDF with the driver's "pdftopdffx"
+// filter
+
+// Raster input does not need extra conversion rules, here we make use
+// of the PostScript input support of the driver
+
+static pr_spooling_conversion_t ghostscript_convert_pdf_to_fx_pdf =
+{
+  "application/pdf",
+  "application/vnd.cups-pdfprintfx",
+  2,
+  {
+    {
+      pdftopdf,
+      "application/vnd.cups-pdf",
+      "pdftopdf"
+    },
+    {
+      filterExternalCUPS,
+      &((filter_external_cups_t){
+	"pdftopdffx",
+	0,
+	NULL,
+	0,
+	NULL,
+	NULL
+      }),
+      "pdftopdffx"
+    }
+  }
+};
+
+
+//
 // 'ghostscript_autoadd()' - Auto-add printers.
 //
 
@@ -103,6 +141,12 @@ main(int  argc,				// I - Number of command-line arguments
   // but as many printers have buggy PS interpreters we prefer converting
   // PDF to Raster and not to PS
   spooling_conversions = cupsArrayNew(NULL, NULL);
+
+  // Special conversion rule for fxlinuxprint driver (Fuji Xerox
+  // non-IPP-driverless PDF printers)
+  cupsArrayAdd(spooling_conversions, &ghostscript_convert_pdf_to_fx_pdf);
+
+  // Standard conversion rules
   cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_pdf);
   cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_raster);
   cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_ps);
