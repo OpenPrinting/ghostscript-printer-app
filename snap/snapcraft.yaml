@@ -681,6 +681,7 @@ parts:
       - lib/*/lib*.so*
       - usr/lib/lib*.so*
       - usr/lib/*/lib*.so*
+
   cjet:
     # Upstream source is not available any more, using Debian packaging
     # GIT instead
@@ -989,6 +990,54 @@ parts:
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/share/ppd/fxlinuxprint-ppds
     after: [cups, pyppd, patches]
+
+  printer-driver-oki:
+    # There is no Debian packaging GIT, using "Upstream" GIT from
+    # Debian maintainer Balint Reczey:
+    # https://github.com/rbalint/printer-driver-oki
+    # Original download place at Brother:
+    # ftp://ftp2.okidata.com/pub/drivers/linux/
+    # Original Debian packaging GIT (server removed):
+    # git://anonscm.debian.org/collab-maint/printer-driver-oki.git
+    source: https://github.com/rbalint/printer-driver-oki
+    source-type: git
+    plugin: make
+    make-parameters:
+      - PREFIX=/usr
+      - DESTDIR=/snap/ghostscript-printer-app/current
+    override-build: |
+      set -eux
+      # Correct path to CUPS filters
+      perl -p -i -e 's:/usr/lib/cups/filter:/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter:' filters/*
+      # Correct path for Ghostscript
+      perl -p -i -e 's:/usr/bin/gs:/snap/ghostscript-printer-app/current/usr/bin/gs:' filters/*
+      # Do not overwrite $PATH environment variable
+      perl -p -i -e 's:^(\s*(export |)PATH):#\1:' filters/*
+      # Do not set $GSCRIPT_LIB environment variable
+      perl -p -i -e 's:^(\s*(export |)GSCRIPT_LIB):#\1:' filters/*
+      # Use $TMPDIR for temporary directory
+      perl -p -i -e 's:/tmp:\$TMPDIR:' filters/*
+      # Create filter installation directory
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/cups/filter/
+      # Correct language in PPD file      
+      perl -p -i -e 's/^(\*LanguageVersion:\s+).*/\1Portuguese/' MFP/OK4X1PSBR.ppd
+      # Install the files
+      snapcraftctl build
+      # Compress the included PPD files
+      ( cd $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+        ln -s okidata ppd
+        $SNAPCRAFT_STAGE/bin/pyppd -v -o oki-ppds ppd
+        rm ppd
+        mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+        mv oki-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      )
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/oki-ppds
+      - -usr/share/ppd/okidata
+    after: [cups, pyppd]
 
   ghostscript-printer-app:
     plugin: make
