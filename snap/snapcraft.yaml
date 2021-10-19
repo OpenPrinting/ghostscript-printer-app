@@ -1039,6 +1039,52 @@ parts:
       - -usr/share/ppd/okidata
     after: [cups, pyppd]
 
+  pxljr:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://hp-pxl-jetready.sourceforge.net/
+    source: https://salsa.debian.org/printing-team/pxljr.git
+    source-type: git
+    source-branch: debian/1.4+repack0-6
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      snapcraftctl build
+      # Generate PPD files for the HP LaserJet 3500 and 3600
+      mkdir ppd
+      cp HP-Color_LaserJet_3550-pxljr.ppd ppd
+      cd ppd
+      for n in 3500 3600; do
+        perl -p -e "s:3550(?!\&quot):${n}:g" HP-Color_LaserJet_3550-pxljr.ppd > HP-Color_LaserJet_${n}-pxljr.ppd
+      done
+      # Allow also PDF as input data format
+      perl -p -i -e 's,^\*cupsFilter:\s*\"application/vnd.cups-postscript\s+0\s+foomatic-rip\",*cupsFilter: "application/vnd.cups-postscript 100 foomatic-rip"\n*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip",' *.ppd
+      # Make the page rendering by Ghostscript faster
+      perl -p -i -e 's,(\-sDEVICE=ijs),-dNOINTERPOLATE \1,' *.ppd
+      # Compress the PPD files
+      cd ..
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o pxljr-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv pxljr-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - libijs-dev
+      - libjpeg-dev
+    stage-packages:
+      - libijs-0.35
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/bin/ijs_pxljr
+      - usr/lib/*/libijs*.so*
+      - usr/share/ppd/pxljr-ppds
+    after: [cups, pyppd]
+
   ghostscript-printer-app:
     plugin: make
     source: .
