@@ -1085,6 +1085,29 @@ parts:
       - usr/share/ppd/pxljr-ppds
     after: [cups, pyppd]
 
+  rastertosag-gdi:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://www.openprinting.org/download/printing/rastertosag-gdi/
+    source: https://salsa.debian.org/printing-team/rastertosag-gdi.git
+    source-type: git
+    source-branch: debian/0.1-8
+    plugin: nil
+    override-build: |
+      set -eux
+      #snapcraftctl build
+      # Copy the filter to the right place
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      cp rastertosag-gdi $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      # Compress the PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o rastertosag-gdi-ppds ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv rastertosag-gdi-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertosag-gdi
+      - usr/share/ppd/rastertosag-gdi-ppds
+    after: [pyppd]
+
   ghostscript-printer-app:
     plugin: make
     source: .
