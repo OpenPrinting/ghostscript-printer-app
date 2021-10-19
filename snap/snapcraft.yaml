@@ -727,7 +727,7 @@ parts:
     # Original homepage: http://pnm2ppa.sourceforge.net/
     source: https://salsa.debian.org/printing-team/pnm2ppa.git
     source-type: git
-    source-branch: debian/1.13-12
+    source-branch: debian/1.13-13
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
