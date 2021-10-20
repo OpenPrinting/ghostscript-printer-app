@@ -310,9 +310,9 @@ parts:
     plugin: autotools
     # We need the 3 libraries: libcupsfilters, libppd, and libfontembed,
     # foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
-    # also for the PCL-XL PPDs from Ricoh and OEM) and the rastertoepson,
-    # rastertopclx, and texttotext filters (for the included PPD files),
-    # and also all PPD and *.drv files
+    # also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
+    # the rastertoepson, rastertopclx, and texttotext filters (for the
+    # included PPD files), and also all PPD and *.drv files
     override-build: |
       set -eux
       ./autogen.sh
@@ -321,12 +321,14 @@ parts:
       make libcupsfilters.la
       make libfontembed.la
       make foomatic-rip
+      make gstoraster
       make rastertoescpx
       make rastertopclx
       mkdir -p $SNAPCRAFT_STAGE/usr/lib
       cp .libs/lib* $SNAPCRAFT_STAGE/usr/lib/
       mkdir -p ../install
       cp .libs/foomatic-rip ../install
+      cp .libs/gstoraster ../install
       cp .libs/rastertoescpx ../install
       cp .libs/rastertopclx ../install
       mkdir -p $SNAPCRAFT_STAGE/usr/include/ppd
@@ -380,6 +382,7 @@ parts:
       - libwebp6
     organize:
       foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
+      gstoraster: usr/lib/ghostscript-printer-app/filter/gstoraster
       rastertoescpx: usr/lib/ghostscript-printer-app/filter/rastertoescpx
       rastertopclx: usr/lib/ghostscript-printer-app/filter/rastertopclx
     prime:
@@ -1107,6 +1110,38 @@ parts:
       - usr/lib/ghostscript-printer-app/filter/rastertosag-gdi
       - usr/share/ppd/rastertosag-gdi-ppds
     after: [pyppd]
+
+  splix:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://splix.ap2c.org/,
+    #                    https://sourceforge.net/projects/splix/
+    source: https://salsa.debian.org/printing-team/splix.git
+    source-type: git
+    source-branch: debian/2.0.0+svn315-7
+    plugin: nil
+    override-build: |
+      set -eux
+      #snapcraftctl build
+      make V=1 rastertoqpdl_LIBS="-lcupsimage -lcups -lpthread -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" pstoqpdl_LIBS="-lcupsimage -lcups -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" CUPSFILTER="/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter"
+      # Copy the filters to the right place
+      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      cp optimized/*toqpdl $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      # Compress the PPD files
+      cp *.ppd ppd
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o splix-ppds ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv splix-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    build-packages:
+      - libjbig-dev
+    stage-packages:
+      - libjbig0
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/pstoqpdl
+      - usr/lib/ghostscript-printer-app/filter/rastertoqpdl
+      - usr/lib/*/libjbig*.so*
+      - usr/share/ppd/splix-ppds
+    after: [cups, pyppd]
 
   ghostscript-printer-app:
     plugin: make
