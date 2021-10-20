@@ -754,7 +754,7 @@ parts:
       - -usr/share
 
   # Unmaintained printer drivers which come as complete package of either
-  # CUPS filter(s) or filters to use together witrh Ghostscript and
+  # CUPS filter(s) or filters to use together with Ghostscript and
   # foomatic-rip and of PPD files or PPD file generators (*.drv files for
   # /usr/share/cups/drv or executables for /usr/lib/cups/driver)
 
@@ -1141,6 +1141,39 @@ parts:
       - usr/lib/ghostscript-printer-app/filter/rastertoqpdl
       - usr/lib/*/libjbig*.so*
       - usr/share/ppd/splix-ppds
+    after: [cups, pyppd]
+
+  # Maintained(?) printer drivers which come as complete package of either
+  # CUPS filter(s) or filters to use together with Ghostscript and
+  # foomatic-rip and of PPD files or PPD file generators (*.drv files for
+  # /usr/share/cups/drv or executables for /usr/lib/cups/driver)
+
+  brlaser:
+    # Upstream source GIT is ahead of the release version 6 Debian uses
+    # and Debian does not apply any patch, so we use the current upstream
+    # GIT master here.
+    # Debian GIT: https://salsa.debian.org/printing-team/brlaser.git
+    source: https://github.com/pdewacht/brlaser.git
+    source-type: git
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    override-build: |
+      set -eux
+      snapcraftctl build
+      # Compile *.drv files into PPD files
+      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd *.drv
+      # Compress the PPD files
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o brlaser-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv brlaser-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertobrlaser
+      - usr/share/ppd/brlaser-ppds
+      - -usr/share/cups
     after: [cups, pyppd]
 
   ghostscript-printer-app:
