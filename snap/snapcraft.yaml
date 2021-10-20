@@ -886,6 +886,43 @@ parts:
       - -usr/share/man
     after: [cups, pyppd]
 
+  fxlinuxprint:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    # Fuji Xerox probably stopped with this driver as this is a PDF driver
+    # and nowadays PDF printers use driverless IPP. The driver seems to be
+    # for the pre-driverless-IPP PDF printers.
+    source: https://salsa.debian.org/printing-team/fxlinuxprint
+    source-type: git
+    source-branch: debian/1.1.0+ds-3
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      # Add list of the actually supported printer models to the single
+      # included PPD file, so that user of the Printer Application gets
+      # guided to this driver if he has an appropriate printer. List taken
+      # from debian/control file. It seems that there is no other place
+      # which tells about the supported models.
+      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-explicit-printer-models-in-ppd.patch
+      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-fix-ppd-loading-in-filter-and-buffer-overflow-warnings.patch
+      autoreconf --install
+      snapcraftctl build
+      # Compress the included PPD file
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o fxlinuxprint-ppds .
+      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
+      mv fxlinuxprint-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/fxlinuxprint-ppds
+    after: [cups, pyppd, patches]
+
   m2300w:
     # Upstream source is still available but to include Debian's patches, we
     # are using Debian packaging GIT instead
@@ -953,43 +990,6 @@ parts:
       - -usr/share/doc
       - -usr/share/man
     after: [cups, pyppd]
-
-  fxlinuxprint:
-    # Upstream source is not available any more, using Debian packaging
-    # GIT instead
-    # Fuji Xerox probably stopped with this driver as this is a PDF driver
-    # and nowadays PDF printers use driverless IPP. The driver seems to be
-    # for the pre-driverless-IPP PDF printers.
-    source: https://salsa.debian.org/printing-team/fxlinuxprint
-    source-type: git
-    source-branch: debian/1.1.0+ds-3
-    plugin: autotools
-    autotools-configure-parameters:
-      - --prefix=/usr
-    override-build: |
-      set -eux
-      # Add list of the actually supported printer models to the single
-      # included PPD file, so that user of the Printer Application gets
-      # guided to this driver if he has an appropriate printer. List taken
-      # from debian/control file. It seems that there is no other place
-      # which tells about the supported models.
-      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-explicit-printer-models-in-ppd.patch
-      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-fix-ppd-loading-in-filter-and-buffer-overflow-warnings.patch
-      autoreconf --install
-      snapcraftctl build
-      # Compress the included PPD file
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o fxlinuxprint-ppds .
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv fxlinuxprint-ppds $SNAPCRAFT_STAGE/usr/share/ppd
-    build-packages:
-      - autoconf
-      - automake
-    organize:
-      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
-    prime:
-      - usr/lib/ghostscript-printer-app/filter/*
-      - usr/share/ppd/fxlinuxprint-ppds
-    after: [cups, pyppd, patches]
 
   printer-driver-oki:
     # There is no Debian packaging GIT, using "Upstream" GIT from
