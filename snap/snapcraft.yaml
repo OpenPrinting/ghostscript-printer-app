@@ -1176,6 +1176,43 @@ parts:
       - -usr/share/cups
     after: [cups, pyppd]
 
+  ptouch-driver:
+    # Upstream source GIT is ahead of the release version 6 Debian uses
+    # and Debian does not apply any patch, so we use the current upstream
+    # GIT master here.
+    # Debian GIT: https://salsa.debian.org/printing-team/ptouch-driver.git
+    source: https://github.com/philpem/printer-driver-ptouch.git
+    source-type: git
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      snapcraftctl build
+      # Generate PPDs files from Foomatic data
+      mkdir foomatic-db
+      cp -r $SNAPCRAFT_PART_INSTALL/usr/share/foomatic/* foomatic-db/
+      echo '#' > foomatic-db/db/oldprinterids
+      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/foomatic
+      FOOMATICDB=foomatic-db foomatic-compiledb -j 2 -t ppd -d ppd `ls -1 foomatic-db/db/source/driver/*ptouch*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
+      rm -rf foomatic-db
+      $SNAPCRAFT_STAGE/bin/pyppd -v -o ptouch-ppds ppd
+      rm -rf ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv ptouch-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - foomatic-db-engine
+      - libxml-libxml-perl
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertoptch
+      - usr/share/ppd/ptouch-ppds
+    after: [cups, pyppd]
+
   ghostscript-printer-app:
     plugin: make
     source: .
