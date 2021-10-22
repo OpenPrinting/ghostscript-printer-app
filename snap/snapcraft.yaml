@@ -159,7 +159,7 @@ parts:
       - -usr/lib/pkgconfig
 
   ghostscript:
-    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs9540/ghostscript-9.54.0.tar.gz
+    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs9550/ghostscript-9.55.0.tar.gz
     plugin: autotools
     # As this Printer Application supports Ghostscript's built-in drivers,
     # we build them all.
@@ -660,15 +660,10 @@ parts:
     # GIT instead
     source: https://salsa.debian.org/printing-team/c2050.git
     source-type: git
-    source-branch: debian/0.3b-9
+    source-branch: debian/0.3b-10
     plugin: make
     override-build: |
       set -eux
-      # Avoid implicit declaration as "int"
-      perl -p -i -e 's/register i\b/register int i/' c2050.c
-      perl -p -i -e 's/^SweepBuffer_Init\b/void SweepBuffer_Init/' c2050.c
-      # Increase size of buffer to avoind segfault (also passes valgrind then)
-      perl -p -i -e 's/SweepBuffer_Init\s*\(\s*&blkbuffer,\s+blkbytesize\s*\)/SweepBuffer_Init(&blkbuffer, blkbytesize * 2)/' c2050.c
       make -j2
       mkdir -p $SNAPCRAFT_STAGE/usr/bin
       cp c2050 $SNAPCRAFT_STAGE/usr/bin
@@ -897,19 +892,12 @@ parts:
     # for the pre-driverless-IPP PDF printers.
     source: https://salsa.debian.org/printing-team/fxlinuxprint
     source-type: git
-    source-branch: debian/1.1.0+ds-3
+    source-branch: debian/1.1.0+ds-4
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
     override-build: |
       set -eux
-      # Add list of the actually supported printer models to the single
-      # included PPD file, so that user of the Printer Application gets
-      # guided to this driver if he has an appropriate printer. List taken
-      # from debian/control file. It seems that there is no other place
-      # which tells about the supported models.
-      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-explicit-printer-models-in-ppd.patch
-      patch -p0 < $SNAPCRAFT_STAGE/patches/fxlinuxprint-fix-ppd-loading-in-filter-and-buffer-overflow-warnings.patch
       autoreconf --install
       snapcraftctl build
       # Compress the included PPD file
