@@ -52,9 +52,10 @@ requests](https://github.com/OpenPrinting/ghostscript-printer-app).
   ones for which we have PPD support from Foomatic and which are not
   considered deprecated by another driver.
 
-- **`hpijs` of HPLIP**: For non-HP PCL printers (use HPLIP Printer
-  Application for HP printers). Better print quality than with
-  Ghostscript's built-in drivers.
+- **`hpijs` of HPLIP**: For non-HP PCL printers (use the [HPLIP
+  Printer Application](https://snapcraft.io/hplip-printer-app) for HP
+  printers). Better print quality than with Ghostscript's built-in
+  drivers.
 
 - **`pnm2ppa`**: Driver for some older HP printers with proprietary
   protocol, probably the only HP printers **NOT supported by
@@ -68,9 +69,10 @@ requests](https://github.com/OpenPrinting/ghostscript-printer-app).
   from Dell, Epson, Fuji, HP, Kyocera, Lexmark, (Konica) Minolta, Oki,
   Olivetti, Ricoh, Samsung, Xerox. Note that the firmware loading
   facility for HP is not included in this Printer Application, use the
-  HPLIP Printer Application (download proprietary plugin in-app, via
-  web interface) for these printers, the firmware is proprietary
-  anyway. In the Snap the user can add color profiles, see below.
+  [HPLIP Printer Application](https://snapcraft.io/hplip-printer-app)
+  (download proprietary plugin in-app, via web interface) for these
+  printers, the firmware is proprietary anyway. In the Snap the user
+  can add color profiles, see below.
 
 - **`SpliX`**: Driver for laser printers with proprietary languages,
   from Dell, Lexmark, Samsung, Toshiba, Xerox
@@ -99,28 +101,31 @@ requests](https://github.com/OpenPrinting/ghostscript-printer-app).
   older HP DesignJet large-format printers.
 
 - **Manufacturer-supplied PPD files**: For PCL and PDF printers from
-  Ricoh and OEM (Gestetner InfoPrint, Infotec, Lanier, NRG, Ricoh,
+  Ricoh and OEM (Gestetner, InfoPrint, Infotec, Lanier, NRG, Ricoh,
   Savin) and from Samsung.
 
 ### Not included
 
 - **PostScript**: For manufacturer-supplied PostScript support, use
-  the PostScript Printer Application.
+  the [PostScript Printer
+  Application](https://snapcraft.io/ps-printer-app).
 
-- **HPLIP**: For practically all HP printers use the HPLIP Printer
-  Application. It also supports HP's proprietary plugin for printers
-  which need to load their firmware on startup or need a proprietary
-  driver extension.
+- **HPLIP**: For practically all HP printers use the [HPLIP Printer
+  Application](https://snapcraft.io/hplip-printer-app). It also
+  supports HP's proprietary plugin for printers which need to load
+  their firmware on startup or need a proprietary driver extension.
 
 - **Gutenprint**: High-quality output with inkjets from Epson, Canon,
   and others, also PCL laser printers. A lot of adjustable
-  parameters. Use the Gutenprint Printer Application.
+  parameters. Use the [Gutenprint Printer
+  Application](https://snapcraft.io/gutenprint-printer-app).
 
-- **`epson-inkjet-printer-escpr`**: Epson's free-software printer driver
-  for ESC/P-R-based inkjet printers. It supports only 360 dpi
+- **`epson-inkjet-printer-escpr`**: Epson's free-software printer
+  driver for ESC/P-R-based inkjet printers. It supports only 360 dpi
   resolution and a very awkward user interface which cannot get easily
   mapped to IPP. Therefore it is not included in this Printer
-  Application. Use the Gutenprint Printer Application.
+  Application. Use the [Gutenprint Printer
+  Application](https://snapcraft.io/gutenprint-printer-app).
 
 - **Braille embosser drivers**: We plan a separate Printer Application
   for that.
