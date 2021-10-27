@@ -197,8 +197,7 @@ parts:
     plugin: autotools
     # We only need libcups (with headers, ...), the rastertoepson,
     # rastertohp, and rastertolabel filters (for the PCL-5 PPD files from
-    # Ricoh and OEM, and for sample.drv PPDs), the backends,
-    # ppdc plus *.defs files (for PPD files provided via *.drv),
+    # Ricoh and OEM, and for sample.drv PPDs), the backends, and the
     # sample.drv file
     override-build: |
       set -eux
@@ -216,36 +215,24 @@ parts:
       perl -p -i -e 's/"CUPS_DATADIR"/"USB_QUIRK_DIR"/' usb-libusb.c
       make snmp dnssd socket ipp ipps lpd usb
       cd ..
-      cd ppdc
-      make ppdc
-      cd ..
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib
-      cp cups/libcups*.a $SNAPCRAFT_STAGE/usr/lib/
-      cp cups/libcups*.so* $SNAPCRAFT_STAGE/usr/lib/
-      mkdir -p $SNAPCRAFT_STAGE/usr/include/cups
-      cp cups/*.h $SNAPCRAFT_STAGE/usr/include/cups/
-      mkdir -p $SNAPCRAFT_STAGE/usr/bin
-      cp cups-config $SNAPCRAFT_STAGE/usr/bin/
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertoepson $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertohp $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertolabel $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib
+      cp cups/libcups*.a $SNAPCRAFT_PART_INSTALL/usr/lib/
+      cp cups/libcups*.so* $SNAPCRAFT_PART_INSTALL/usr/lib/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/cups
+      cp cups/*.h $SNAPCRAFT_PART_INSTALL/usr/include/cups/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
+      cp cups-config $SNAPCRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertoepson $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertohp $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertolabel $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
       ( cd backend; \
-        cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/ \
+        cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/ \
       )
-      cp conf/snmp.conf $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/backend/
-      cp ppdc/ppdc $SNAPCRAFT_STAGE/usr/bin/
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/cups/ppdc/
-      cp data/*.defs data/*.h $SNAPCRAFT_STAGE/usr/share/cups/ppdc/
-      # Compile sample.drv into PPD files
-      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd ppdc/sample.drv
-      # Compress the compiled PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o cups-ppds ppd
-      rm -rf ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv cups-ppds $SNAPCRAFT_STAGE/usr/share/ppd
-      #snapcraftctl build
+      cp conf/snmp.conf $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      cp ppdc/sample.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd/cups.drv
     build-packages:
       - patch
       - gettext
@@ -286,23 +273,12 @@ parts:
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
-      - usr/share/ppd/cups-ppds
+      - usr/share/ppd/cups.drv
       - usr/lib
       - usr/lib/libcups.so.2
       - usr/lib/libcupsimage.so.2
-      - usr/lib/ghostscript-printer-app/filter/rastertoepson
-      - usr/lib/ghostscript-printer-app/filter/rastertohp
-      - usr/lib/ghostscript-printer-app/filter/rastertolabel
-      - usr/lib/ghostscript-printer-app/backend/snmp
-      - usr/lib/ghostscript-printer-app/backend/dnssd
-      - usr/lib/ghostscript-printer-app/backend/socket
-      - usr/lib/ghostscript-printer-app/backend/ipp
-      - usr/lib/ghostscript-printer-app/backend/ipps
-      - usr/lib/ghostscript-printer-app/backend/lpd
-      - usr/lib/ghostscript-printer-app/backend/usb
-      - usr/lib/ghostscript-printer-app/backend/org.cups.usb-quirks
-      - usr/lib/ghostscript-printer-app/backend/snmp.conf
-    after: [pyppd]
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/lib/ghostscript-printer-app/backend/*
 
   cups-filters:
     source: https://github.com/OpenPrinting/cups-filters
@@ -312,11 +288,12 @@ parts:
     # foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
     # also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
     # the rastertoepson, rastertopclx, and texttotext filters (for the
-    # included PPD files), and also all PPD and *.drv files
+    # included PPD files), the PPD compiler ppdc, the include files for
+    # *.drv files, and also all PPD and *.drv files
     override-build: |
       set -eux
       ./autogen.sh
-      ./configure --disable-avahi --disable-ldap --disable-foomatic --disable-braille --disable-mutool --without-rcdir --with-pdftops-path=/snap/ghostscript-printer-app/current/usr/bin/pdftops
+      ./configure --disable-avahi --disable-ldap --disable-foomatic --disable-braille --disable-mutool --without-rcdir --enable-ppdc-utils --with-pdftops-path=/snap/ghostscript-printer-app/current/usr/bin/pdftops
       make libppd.la
       make libcupsfilters.la
       make libfontembed.la
@@ -324,32 +301,37 @@ parts:
       make gstoraster
       make rastertoescpx
       make rastertopclx
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib
-      cp .libs/lib* $SNAPCRAFT_STAGE/usr/lib/
-      mkdir -p ../install
-      cp .libs/foomatic-rip ../install
-      cp .libs/gstoraster ../install
-      cp .libs/rastertoescpx ../install
-      cp .libs/rastertopclx ../install
-      mkdir -p $SNAPCRAFT_STAGE/usr/include/ppd
-      cp ppd/*.h $SNAPCRAFT_STAGE/usr/include/ppd/
-      mkdir -p $SNAPCRAFT_STAGE/usr/include/cupsfilters
-      cp cupsfilters/*.h $SNAPCRAFT_STAGE/usr/include/cupsfilters/
-      mkdir -p $SNAPCRAFT_STAGE/usr/include/fontembed
-      cp fontembed/*.h $SNAPCRAFT_STAGE/usr/include/fontembed/
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib/pkgconfig
-      cp *.pc $SNAPCRAFT_STAGE/usr/lib/pkgconfig/
+      make ppdc
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib
+      cp .libs/lib* $SNAPCRAFT_PART_INSTALL/usr/lib/
+      mkdir -p $SNAPCRAFT_PART_INSTALL
+      cp .libs/foomatic-rip $SNAPCRAFT_PART_INSTALL
+      cp .libs/gstoraster $SNAPCRAFT_PART_INSTALL
+      cp .libs/rastertoescpx $SNAPCRAFT_PART_INSTALL
+      cp .libs/rastertopclx $SNAPCRAFT_PART_INSTALL
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/ppd
+      cp ppd/*.h $SNAPCRAFT_PART_INSTALL/usr/include/ppd/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/cupsfilters
+      cp cupsfilters/*.h $SNAPCRAFT_PART_INSTALL/usr/include/cupsfilters/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/fontembed
+      cp fontembed/*.h $SNAPCRAFT_PART_INSTALL/usr/include/fontembed/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/pkgconfig
+      cp *.pc $SNAPCRAFT_PART_INSTALL/usr/lib/pkgconfig/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
+      cp .libs/ppdc $SNAPCRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppdc
+      cp ppd/*.defs ppd/epson.h ppd/hp.h ppd/label.h $SNAPCRAFT_PART_INSTALL/usr/share/ppdc/
+      cp filter/escp.h filter/pcl.h $SNAPCRAFT_PART_INSTALL/usr/share/ppdc/
       # Compile cupsfilters.drv into PPD files
-      $SNAPCRAFT_STAGE/usr/bin/ppdc -I filter -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd drv/cupsfilters.drv
+      ./ppdc -I $SNAPCRAFT_PART_INSTALL/usr/share/ppdc -d ppd drv/cupsfilters.drv
       # Remove PPD files which are not useful in the Printer Application
-      rm ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
+      rm -f ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
       # Compress the included PPD files, both ready-made and compiled
       cp ppdfiles/*.ppd ppd
       $SNAPCRAFT_STAGE/bin/pyppd -v -o cups-filters-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv cups-filters-ppds $SNAPCRAFT_STAGE/usr/share/ppd
-      #snapcraftctl build
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv cups-filters-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - gettext
       - autoconf
@@ -388,6 +370,7 @@ parts:
     prime:
       - -etc/fonts
       - -var
+      - -usr/bin/ppdc
       - -usr/include
       - -usr/lib/pkgconfig
       - -usr/share/fonts
@@ -396,6 +379,7 @@ parts:
       - -usr/share/doc-base
       - -usr/share/lintian
       - usr/share/ppd/cups-filters-ppds
+      - usr/share/ppdc/*
       - usr/lib
       - usr/lib/libcupsfilters.so.1
       - -usr/lib/libcupsfilters.so.1.0.0
@@ -461,7 +445,6 @@ parts:
       # Compress the manufacturer PPDs in a self-extracting archive
       mv usr/share/foomatic/db/source/PPD ppd
       $SNAPCRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
-      #snapcraftctl build
     build-packages:
       - perl-base
       - python3
@@ -648,7 +631,7 @@ parts:
       - -usr/share/doc-base
       - -usr/share/lintian
       - -snap
-    after: [cups]
+    after: [cups, cups-filters]
 
   # Unmaintained printer drivers which come as a filter to convert generic
   # raster output of GhostScript into the printer's data format. The PPDs
@@ -665,9 +648,8 @@ parts:
     override-build: |
       set -eux
       make -j2
-      mkdir -p $SNAPCRAFT_STAGE/usr/bin
-      cp c2050 $SNAPCRAFT_STAGE/usr/bin
-      #snapcraftctl build
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
+      cp c2050 $SNAPCRAFT_PART_INSTALL/usr/bin
     stage-packages:
       - libjbig0
       - libjpeg-turbo8
@@ -690,9 +672,8 @@ parts:
     override-build: |
       set -eux
       make -j2
-      mkdir -p $SNAPCRAFT_STAGE/usr/bin
-      cp cjet $SNAPCRAFT_STAGE/usr/bin
-      #snapcraftctl build
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
+      cp cjet $SNAPCRAFT_PART_INSTALL/usr/bin
     prime:
       - usr/bin/cjet
 
@@ -767,13 +748,9 @@ parts:
       set -eux
       autoreconf --install
       snapcraftctl build
-      # Compile *.drv files into PPD files
-      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd */*.drv
-      # Compress the compiled PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o c2esp-ppds ppd
-      rm ppd/*.ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv c2esp-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      perl -p -i -e 's:/usr/lib/cups/filter/::g' */*.drv
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      cp */*.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd/
     build-packages:
       - autoconf
       - automake
@@ -781,8 +758,8 @@ parts:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
       - usr/lib/ghostscript-printer-app/filter/*
-      - usr/share/ppd/c2esp-ppds
-    after: [cups, pyppd]
+      - usr/share/ppd/*.drv
+    after: [cups, cups-filters]
 
   dymo-cups-drivers:
     # Upstream source is still available but to include Debian's patches, we
@@ -801,8 +778,8 @@ parts:
       snapcraftctl build
       # Compress the included PPD files
       $SNAPCRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv dymo-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv dymo-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -902,8 +879,8 @@ parts:
       snapcraftctl build
       # Compress the included PPD file
       $SNAPCRAFT_STAGE/bin/pyppd -v -o fxlinuxprint-ppds .
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv fxlinuxprint-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv fxlinuxprint-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -935,7 +912,6 @@ parts:
       # Explicitly call "./configure; make; make install" as "make install"
       # uses "INSTROOT" instead of "DESTDIR" (and in core20 the "autotools"
       # plugin is hardwired to "DESTDIR")
-      #snapcraftctl build
       autoreconf --install
       ./configure --prefix=/usr
       make -j2
@@ -1019,8 +995,6 @@ parts:
         ln -s okidata ppd
         $SNAPCRAFT_STAGE/bin/pyppd -v -o oki-ppds ppd
         rm ppd
-        mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-        mv oki-ppds $SNAPCRAFT_STAGE/usr/share/ppd
       )
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
@@ -1059,8 +1033,8 @@ parts:
       cd ..
       $SNAPCRAFT_STAGE/bin/pyppd -v -o pxljr-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv pxljr-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv pxljr-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -1086,14 +1060,13 @@ parts:
     plugin: nil
     override-build: |
       set -eux
-      #snapcraftctl build
       # Copy the filter to the right place
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      cp rastertosag-gdi $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp rastertosag-gdi $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
       # Compress the PPD files
       $SNAPCRAFT_STAGE/bin/pyppd -v -o rastertosag-gdi-ppds ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv rastertosag-gdi-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv rastertosag-gdi-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     prime:
       - usr/lib/ghostscript-printer-app/filter/rastertosag-gdi
       - usr/share/ppd/rastertosag-gdi-ppds
@@ -1110,16 +1083,15 @@ parts:
     plugin: nil
     override-build: |
       set -eux
-      #snapcraftctl build
       make V=1 rastertoqpdl_LIBS="-lcupsimage -lcups -lpthread -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" pstoqpdl_LIBS="-lcupsimage -lcups -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" CUPSFILTER="/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter"
       # Copy the filters to the right place
-      mkdir -p $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
-      cp optimized/*toqpdl $SNAPCRAFT_STAGE/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp optimized/*toqpdl $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
       # Compress the PPD files
       cp *.ppd ppd
       $SNAPCRAFT_STAGE/bin/pyppd -v -o splix-ppds ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv splix-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mv splix-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - libjbig-dev
     stage-packages:
@@ -1149,20 +1121,15 @@ parts:
     override-build: |
       set -eux
       snapcraftctl build
-      # Compile *.drv files into PPD files
-      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_STAGE/usr/share/cups/ppdc -d ppd *.drv
-      # Compress the PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o brlaser-ppds ppd
-      rm -rf ppd
-      mkdir -p $SNAPCRAFT_STAGE/usr/share/ppd
-      mv brlaser-ppds $SNAPCRAFT_STAGE/usr/share/ppd
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      cp *.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
       - usr/lib/ghostscript-printer-app/filter/rastertobrlaser
-      - usr/share/ppd/brlaser-ppds
+      - usr/share/ppd/*.drv
       - -usr/share/cups
-    after: [cups, pyppd]
+    after: [cups, cups-filters]
 
   ptouch-driver:
     # Upstream source GIT is ahead of the release version 6 Debian uses

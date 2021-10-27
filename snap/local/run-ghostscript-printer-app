@@ -19,5 +19,6 @@ export STATE_FILE=$SNAP_COMMON/ghostscript-printer-app.state
 export SPOOL_DIR=$SNAP_COMMON/spool
 export CUPS_SERVERROOT=$SNAP_COMMON/cups
 export CUPS_SERVERBIN=$SNAP/usr/lib/ghostscript-printer-app
+export PPDC_DATADIR=$SNAP/usr/share/ppdc
 
 exec $SNAP/usr/bin/ghostscript-printer-app $*
