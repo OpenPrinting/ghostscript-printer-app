@@ -87,8 +87,10 @@ parts:
       - libusb-1.0-0
     prime:
       - -etc/fonts
-      - lib/*/lib*.so*
       - -var
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
       - -usr/include
       - -usr/lib/pkgconfig
       - -usr/share/fonts
@@ -97,7 +99,6 @@ parts:
       - -usr/share/doc-base
       - -usr/share/lintian
       - -snap
-      - usr/lib/libpappl.so.1
     after: [patches, cups]
 
   pappl-retrofit:
@@ -117,19 +118,20 @@ parts:
       - autotools-dev
       - pkg-config
       - perl-base
+    stage-packages:
+      - libusb-1.0-0
     prime:
       - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
       - -var
       - -usr/var
       - -usr/bin/test-printer-app
       - -usr/include
-      - -usr/lib/*.a
-      - -usr/lib/*.la
       - -usr/lib/pkgconfig
       - -usr/lib/test-printer-app
       - -usr/share/
       - -snap
-      - usr/lib/libpappl-retrofit.so*
     after: [patches, cups, cups-filters, pappl]
 
   qpdf:
@@ -143,6 +145,9 @@ parts:
     stage-packages:
       - libjpeg-turbo8
     prime:
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
       - -etc/fonts
       - -var
       - -usr/include
@@ -177,6 +182,10 @@ parts:
       - libfreetype6
       - libpng16-16
     prime:
+      - usr/bin/gs
+      - lib/*/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/share/ghostscript
       - -etc/fonts
       - -var
       - -usr/include
@@ -254,8 +263,10 @@ parts:
       - libpam0g-dev
       - libpaper-dev
       - libpng-dev
+      - libusb-1.0-0-dev
       - perl-base
     stage-packages:
+      - libusb-1.0-0
       - libavahi-common3
       - libavahi-client3
       - libicu66
@@ -264,7 +275,6 @@ parts:
       - libxml2
     prime:
       - -etc/fonts
-      - lib/*/lib*.so*
       - -var
       - -usr/include
       - -usr/lib/pkgconfig
@@ -273,10 +283,10 @@ parts:
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
       - usr/share/ppd/cups.drv
-      - usr/lib
-      - usr/lib/libcups.so.2
-      - usr/lib/libcupsimage.so.2
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/lib/ghostscript-printer-app/backend/*
 
@@ -378,17 +388,14 @@ parts:
       - -usr/share/doc
       - -usr/share/doc-base
       - -usr/share/lintian
-      - usr/share/ppd/cups-filters-ppds
-      - usr/share/ppdc/*
-      - usr/lib
-      - usr/lib/libcupsfilters.so.1
-      - -usr/lib/libcupsfilters.so.1.0.0
-      - usr/lib/libppd.so.1
-      - -usr/lib/libppd.so.1.0.0
-      - usr/lib/libfontembed.so.1
-      - -usr/lib/libfontembed.so.1.0.0
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
       - usr/bin/pdftops
       - usr/lib/ghostscript-printer-app
+      - usr/share/ppd/cups-filters-ppds
+      - usr/share/ppdc/*
     after: [cups, qpdf, ghostscript, pyppd]
 
   pyppd:
@@ -460,18 +467,11 @@ parts:
       - usr/bin
       - usr/share/ppd
     prime:
-      - -etc
-      - usr/bin
+      - usr/bin/xz
+      - -usr/bin/pdb3
+      - -usr/bin/pydoc3
+      - -usr/bin/pygettext3
       - usr/share/ppd
-      - -usr/share/apport
-      - -usr/share/bug
-      - -usr/share/man
-      - -usr/share/doc
-      - -usr/share/doc-base
-      - -usr/share/lintian
-      - -usr/share/foomatic
-      - -usr/share/pnm2ppa
-      - -var
     after: [pyppd]
 
   hplip:
@@ -611,26 +611,11 @@ parts:
     organize:
       snap/ghostscript-printer-app/current/etc/hp/hplip.conf: etc/hp/hplip.conf
     prime:
-      - lib/*/lib*.so*
-      - -etc/udev*
       - etc/hp/hplip.conf
-      - -var
       - usr/bin/hpijs
-      - usr/lib/libhpip.so*
-      - usr/lib/libhpmud.so*
-      - usr/lib/libhpdiscovery.so*
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
       - usr/lib/*/lib*.so*
-      - -usr/lib/python*
-      - -usr/lib/systemd
-      - -usr/lib/cups
-      - -usr/include
-      - -usr/lib/pkgconfig
-      - -usr/share/fonts
-      - -usr/share/man
-      - -usr/share/doc
-      - -usr/share/doc-base
-      - -usr/share/lintian
-      - -snap
     after: [cups, cups-filters]
 
   # Unmaintained printer drivers which come as a filter to convert generic
@@ -694,11 +679,8 @@ parts:
       snapcraftctl build
     build-packages:
       - autoconf
-    stage:
-      - usr/bin/min12xxw
     prime:
       - usr/bin/min12xxw
-      - -usr/share
 
   pnm2ppa:
     # Upstream source is still available but to include Debian's patches, we
@@ -727,7 +709,6 @@ parts:
       - etc/pnm2ppa.conf
       - usr/bin/calibrate_ppa
       - usr/bin/pnm2ppa
-      - -usr/share
 
   # Unmaintained printer drivers which come as complete package of either
   # CUPS filter(s) or filters to use together with Ghostscript and
@@ -788,7 +769,6 @@ parts:
     prime:
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/share/ppd/dymo-ppds
-      - -usr/share/cups
     after: [cups, pyppd]
 
   foo2zjs:
@@ -846,19 +826,11 @@ parts:
       - psutils
       - bsdutils
       - dc
-    stage:
-      - usr/bin/*
-      - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
-      - usr/share/ppd/foo2zjs-ppds
-      - usr/share/foo2*
     prime:
       - usr/bin/*
       - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
       - usr/share/ppd/foo2zjs-ppds
       - usr/share/foo2*
-      - -usr/share/cups
-      - -usr/share/doc
-      - -usr/share/man
     after: [cups, pyppd]
 
   fxlinuxprint:
@@ -945,17 +917,10 @@ parts:
       - automake
     stage-packages:
       - psutils
-    stage:
-      - usr/bin/*
-      - usr/share/ppd/m2300w-ppds
-      - usr/share/m2300w/*
     prime:
       - usr/bin/*
       - usr/share/ppd/m2300w-ppds
       - usr/share/m2300w/*
-      - -usr/share/cups
-      - -usr/share/doc
-      - -usr/share/man
     after: [cups, pyppd]
 
   printer-driver-oki:
@@ -1001,7 +966,6 @@ parts:
     prime:
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/share/ppd/oki-ppds
-      - -usr/share/ppd/okidata
     after: [cups, pyppd]
 
   pxljr:
@@ -1128,7 +1092,6 @@ parts:
     prime:
       - usr/lib/ghostscript-printer-app/filter/rastertobrlaser
       - usr/share/ppd/*.drv
-      - -usr/share/cups
     after: [cups, cups-filters]
 
   ptouch-driver:
@@ -1196,17 +1159,14 @@ parts:
       - libtiff5
       - libwebp6
     stage:
-      - usr/bin/ghostscript-printer-app
       - -usr/lib/ghostscript-printer-app
-      - usr/share/ghostscript-printer-app/testpage.ps
     prime:
-      - -var
       - usr/bin/ghostscript-printer-app
       - lib/*/lib*.so*
-      - usr/lib/lib*.so*
-      - -lib/systemd
+      - usr/lib/*/lib*.so*
+      - usr/share/ghostscript-printer-app
+      - -var
       - -usr/share/man
-      - usr/share/ghostscript-printer-app/testpage.ps
     after: [pappl-retrofit, pappl, cups-filters, foomatic-db]
 
   mdns-lookup:
