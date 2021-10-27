@@ -210,6 +210,7 @@ parts:
     # sample.drv file
     override-build: |
       set -eux
+      patch -p1 < $SNAPCRAFT_STAGE/patches/cups-dnssd-backend-socket-only.patch
       ./configure --sysconfdir=/var/snap/ghostscript-printer-app/common/
       cd cups
       make
@@ -289,6 +290,7 @@ parts:
       - usr/share/ppd/cups.drv
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/lib/ghostscript-printer-app/backend/*
+    after: [patches]
 
   cups-filters:
     source: https://github.com/OpenPrinting/cups-filters
