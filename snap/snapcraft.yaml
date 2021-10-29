@@ -319,6 +319,7 @@ parts:
       make libfontembed.la
       make foomatic-rip
       make gstoraster
+      make pdftops
       make rastertoescpx
       make rastertopclx
       make ppdc
@@ -327,6 +328,7 @@ parts:
       mkdir -p $SNAPCRAFT_PART_INSTALL
       cp .libs/foomatic-rip $SNAPCRAFT_PART_INSTALL
       cp .libs/gstoraster $SNAPCRAFT_PART_INSTALL
+      cp .libs/pdftops $SNAPCRAFT_PART_INSTALL
       cp .libs/rastertoescpx $SNAPCRAFT_PART_INSTALL
       cp .libs/rastertopclx $SNAPCRAFT_PART_INSTALL
       mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/ppd
@@ -385,6 +387,7 @@ parts:
     organize:
       foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
       gstoraster: usr/lib/ghostscript-printer-app/filter/gstoraster
+      pdftops: usr/lib/ghostscript-printer-app/filter/pdftops
       rastertoescpx: usr/lib/ghostscript-printer-app/filter/rastertoescpx
       rastertopclx: usr/lib/ghostscript-printer-app/filter/rastertopclx
     prime:
