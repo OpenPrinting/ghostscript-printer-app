@@ -21,4 +21,4 @@ export CUPS_SERVERROOT=$SNAP_COMMON/cups
 export CUPS_SERVERBIN=$SNAP/usr/lib/ghostscript-printer-app
 export PPDC_DATADIR=$SNAP/usr/share/ppdc
 
-exec $SNAP/usr/bin/ghostscript-printer-app $*
+exec $SNAP/usr/bin/ghostscript-printer-app "$@"
