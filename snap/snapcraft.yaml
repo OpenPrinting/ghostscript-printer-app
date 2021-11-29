@@ -20,6 +20,11 @@ apps:
   ghostscript-printer-app-server:
     command: scripts/run-ghostscript-printer-app-server
     daemon: simple
+    # Use a systemd timeout longer than 1 min as PAPPL has a 1-minute
+    # shutdown timeout if there are pending jobs for which the printer
+    # is not responding. This way we avoid the Printer Application
+    # getting killed and shut down uncleanly.
+    stop-timeout: 70s
     plugs: [avahi-control, home, network, network-bind, raw-usb]
   ghostscript-printer-app:
     command: scripts/run-ghostscript-printer-app
