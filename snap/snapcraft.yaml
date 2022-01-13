@@ -428,6 +428,7 @@ parts:
       # PostScript Printer Application
       rm usr/share/foomatic/db/source/PPD/*/*.ppd
       rm -rf usr/share/foomatic/db/source/PPD/Kyocera
+      rm -rf usr/share/foomatic/db/source/PPD/Utax
       rm -rf usr/share/foomatic/db/source/PPD/Oce
       rm -rf usr/share/foomatic/db/source/PPD/*/PS
       # Remove executable bits on the files
