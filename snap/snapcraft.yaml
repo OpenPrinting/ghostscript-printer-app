@@ -142,7 +142,7 @@ parts:
     after: [patches, cups, cups-filters, pappl]
 
   qpdf:
-    source: https://github.com/qpdf/qpdf/releases/download/release-qpdf-10.3.2/qpdf-10.3.2.tar.gz
+    source: https://github.com/qpdf/qpdf/releases/download/release-qpdf-10.5.0/qpdf-10.5.0.tar.gz
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -500,11 +500,11 @@ parts:
     # Note that the repository has all patches already applied, so we do
     # not need to apply them before building.
     # Debian source
-    source: https://salsa.debian.org/printing-team/hplip.git
+    source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-branch: debian/3.21.8+dfsg0-2
+    source-branch: debian/3.21.12+dfsg0-1
     # Upstream source
-    #source: https://sourceforge.net/projects/hplip/files/hplip/3.21.8/hplip-3.21.8.tar.gz
+    #source: https://sourceforge.net/projects/hplip/files/hplip/3.21.12/hplip-3.21.12.tar.gz
     plugin: autotools
     build-environment:
       - PYTHON: python3
