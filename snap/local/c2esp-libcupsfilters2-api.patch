@@ -1,0 +1,48 @@
+--- a/src/c2esp.c
++++ b/src/c2esp.c
+@@ -530,13 +530,17 @@
+ 	for(Col=0;Col<3;++Col)
+ 	{
+ 		//For CMY or RGB
+-  		if(OutBits == 2) Lut[Col] = cupsLutNew(3, default_lut3);
+-		else Lut[Col] = cupsLutNew(2, default_lut2);
++		if(OutBits == 2) Lut[Col] = cupsLutNew(3, default_lut3,
++						       cups_logfunc, NULL);
++		else Lut[Col] = cupsLutNew(2, default_lut2,
++					   cups_logfunc, NULL);
+   		DitherState[Col] = cupsDitherNew(LineWidth);
+ 	}
+ 		//For Kk
+-  		if(OutBits == 2) Lut[3] = cupsLutNew(5, default_lut5);
+-		else Lut[3] = cupsLutNew(3, default_lut3);
++  		if(OutBits == 2) Lut[3] = cupsLutNew(5, default_lut5,
++						     cups_logfunc, NULL);
++		else Lut[3] = cupsLutNew(3, default_lut3,
++					 cups_logfunc, NULL);
+   		DitherState[3] = cupsDitherNew(LineWidth);
+ }
+ 
+@@ -944,8 +948,8 @@
+   	ppd_file_t		*ppd;		/* PPD file */
+  	cups_raster_t		*ras;		/* Raster stream from cups */
+   	cups_page_header2_t	header;		/* Page header from cups */
+-	cups_cmyk_t		*cmykTrans300;	/* cmyk transform for cups 300dpi*/
+-	cups_cmyk_t		*cmykTrans600;	/* cmyk transform for cups 600dpi*/
++	cups_cmyk_t		*cmykTrans300 = NULL;	/* cmyk transform for cups 300dpi*/
++	cups_cmyk_t		*cmykTrans600 = NULL;	/* cmyk transform for cups 600dpi*/
+ 	int			RemainingPixels;
+   	int			Stripe, y;		
+ 	int			StripeEnd; //index of last byte in current stripe
+@@ -1042,8 +1046,10 @@
+ 	if(ppd)
+ 	{
+       		DoLog("Opened ppd OK. Reading from ppd\n",0,0); 
+-		cmykTrans300 = cupsCMYKLoad(ppd, "RGB", "", "300x1200dpi");
+-		cmykTrans600 = cupsCMYKLoad(ppd, "RGB", "", "600x1200dpi");
++		cmykTrans300 = cupsCMYKLoad(ppd, "RGB", "", "300x1200dpi",
++					    cups_logfunc, NULL);
++		cmykTrans600 = cupsCMYKLoad(ppd, "RGB", "", "600x1200dpi",
++					    cups_logfunc, NULL);
+ 		ppdClose(ppd);
+      		DoLog("InkChannels 300dpi=%d 600dpi=%d\n",cmykTrans300->num_channels,cmykTrans600->num_channels);
+ 	}

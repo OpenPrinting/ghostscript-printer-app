@@ -740,6 +740,10 @@ parts:
       - --prefix=/usr
     override-build: |
       set -eux
+      # In libcupsfilter2 the API for driver-relevant functions has changed
+      # to introduce log functions. This patch does the needed adaptations
+      # on the code of c2esp.
+      patch -p1 < $SNAPCRAFT_STAGE/patches/c2esp-libcupsfilters2-api.patch
       autoreconf --install
       snapcraftctl build
       perl -p -i -e 's:/usr/lib/cups/filter/::g' */*.drv
