@@ -54,13 +54,13 @@ static pr_spooling_conversion_t ghostscript_convert_pdf_to_fx_pdf =
   2,
   {
     {
-      pdftopdf,
+      cfFilterPDFToPDF,
       "application/vnd.cups-pdf",
       "pdftopdf"
     },
     {
-      filterExternalCUPS,
-      &((filter_external_cups_t){
+      cfFilterExternalCUPS,
+      &((cf_filter_external_cups_t){
 	"pdftopdffx",
 	0,
 	NULL,
