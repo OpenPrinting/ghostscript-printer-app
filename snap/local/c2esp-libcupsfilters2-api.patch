@@ -118,3 +118,20 @@
  							// cupsDoRGB scales up to 4096 a short int from the unsigned char input 255
  							for(Col = 0; Col<4; ++Col) 
  							{
+--- a/configure.ac
++++ b/configure.ac
+@@ -19,11 +19,11 @@
+ AC_CHECK_LIB(cups, ppdOpenFile)
+ 
+ #-lcupsdriver for cups < ver 1.6
+-AC_SEARCH_LIBS(cupsDitherNew, cupsdriver cupsfilters)
+-if test "$ac_cv_search_cupsDitherNew" = "-lcupsdriver"; then :
++AC_SEARCH_LIBS(cfDitherNew, cupsdriver cupsfilters)
++if test "$ac_cv_search_cfDitherNew" = "-lcupsdriver"; then :
+ 	HAVE_LIBCUPSDRIVER="1"
+ fi
+-if test "$ac_cv_search_cupsDitherNew" = "-lcupsfilters"; then :
++if test "$ac_cv_search_cfDitherNew" = "-lcupsfilters"; then :
+ 	HAVE_LIBCUPSFILTERS="1"
+ fi
+ 
