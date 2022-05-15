@@ -374,6 +374,7 @@ parts:
       - zlib1g-dev
       - libfontconfig1-dev
       - libdbus-1-dev
+      - libexif-dev
       - librsvg2-bin
     stage-packages:
       - poppler-utils
@@ -386,6 +387,7 @@ parts:
       - libpoppler97
       - libtiff5
       - libwebp6
+      - libexif12
     organize:
       foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
       gstoraster: usr/lib/ghostscript-printer-app/filter/gstoraster
