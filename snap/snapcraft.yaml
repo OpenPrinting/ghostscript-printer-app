@@ -507,9 +507,9 @@ parts:
     # Debian source
     source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-branch: debian/3.22.4+dfsg0-1
+    source-branch: debian/3.22.6+dfsg0-1
     # Upstream source
-    #source: https://sourceforge.net/projects/hplip/files/hplip/3.22.4/hplip-3.22.4.tar.gz
+    #source: https://sourceforge.net/projects/hplip/files/hplip/3.22.6/hplip-3.22.6.tar.gz
     plugin: autotools
     build-environment:
       - PYTHON: python3
@@ -771,7 +771,7 @@ parts:
     #https://www.dymo-label-printers.co.uk/news/download-dymo-sdk-for-linux.html
     source: https://salsa.debian.org/printing-team/dymo-cups-drivers.git
     source-type: git
-    source-branch: debian/1.4.0-11
+    source-branch: debian/1.4.0-12
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
