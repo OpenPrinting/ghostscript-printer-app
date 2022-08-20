@@ -1,6 +1,14 @@
 --- a/src/c2esp.c
 +++ b/src/c2esp.c
-@@ -522,7 +522,7 @@
+@@ -44,6 +44,7 @@
+ 
+ #if HAVE_CUPSFILTERS_DRIVER_H == 1
+ #include <cupsfilters/driver.h> //has the dither functions
++#include <ppd/ppd.h>
+ #else
+ #include <cups/driver.h> //has the dither functions
+ #endif
+@@ -522,7 +523,7 @@
  	} //end of stripe with print
  }
  
@@ -9,7 +17,7 @@
  {
  //Creates Luts and DitherStates for dithering
  
-@@ -530,14 +530,18 @@
+@@ -530,14 +531,18 @@
  	for(Col=0;Col<3;++Col)
  	{
  		//For CMY or RGB
@@ -34,7 +42,7 @@
  }
  
  unsigned char Dithered8ToPrint(unsigned char *Buffer, int x, int Level)
-@@ -672,7 +676,7 @@
+@@ -672,7 +677,7 @@
  
  
  void 
@@ -43,7 +51,7 @@
  {
  int CloseError, Col;
  
-@@ -691,8 +695,8 @@
+@@ -691,8 +696,8 @@
  //free the dither states
    	for(Col = 0; Col < 4 ;++Col)
  	{
@@ -54,7 +62,7 @@
  	}
   /*
    * Termination, send an error message if required...
-@@ -782,7 +786,7 @@
+@@ -782,7 +787,7 @@
  	}
  }
  
@@ -63,7 +71,7 @@
  {
  	//convert the bits in CupsLineBuffer to short ints in DitherInputBuffer for the current colour
  	//checking if it's blank as we go
-@@ -833,7 +837,7 @@
+@@ -833,7 +838,7 @@
  	//if(y == 0) DoLog("Dither stage colour %d line %d\n", Col, y);
  	if(*BlankColour==0) 
  	{
@@ -72,7 +80,7 @@
  		// full scale input is 4095. output is the index in the lut.
  	}
  	if(Col == MonitorColour) //0=cyan 1=mag 2=yellow 3=black
-@@ -944,8 +948,8 @@
+@@ -944,8 +949,8 @@
    	ppd_file_t		*ppd;		/* PPD file */
   	cups_raster_t		*ras;		/* Raster stream from cups */
    	cups_page_header2_t	header;		/* Page header from cups */
@@ -83,7 +91,7 @@
  	int			RemainingPixels;
    	int			Stripe, y;		
  	int			StripeEnd; //index of last byte in current stripe
-@@ -953,8 +957,8 @@
+@@ -953,8 +958,8 @@
  	int			Col,i,x; 
  	int			BlankColour; //boolean to record if the line is blank to save time
          int 			argi;
@@ -94,20 +102,20 @@
  	long			RasForCompHeight;
  
  	StartTime = time(NULL);
-@@ -1042,8 +1046,10 @@
+@@ -1042,8 +1047,10 @@
  	if(ppd)
  	{
        		DoLog("Opened ppd OK. Reading from ppd\n",0,0); 
 -		cmykTrans300 = cupsCMYKLoad(ppd, "RGB", "", "300x1200dpi");
 -		cmykTrans600 = cupsCMYKLoad(ppd, "RGB", "", "600x1200dpi");
-+		cmykTrans300 = cfCMYKLoad(ppd, "RGB", "", "300x1200dpi",
++		cmykTrans300 = ppdCMYKLoad(ppd, "RGB", "", "300x1200dpi",
 +					    cfCUPSLogFunc, NULL);
-+		cmykTrans600 = cfCMYKLoad(ppd, "RGB", "", "600x1200dpi",
++		cmykTrans600 = ppdCMYKLoad(ppd, "RGB", "", "600x1200dpi",
 +					    cfCUPSLogFunc, NULL);
  		ppdClose(ppd);
       		DoLog("InkChannels 300dpi=%d 600dpi=%d\n",cmykTrans300->num_channels,cmykTrans600->num_channels);
  	}
-@@ -1233,8 +1239,8 @@
+@@ -1233,8 +1240,8 @@
  						if (header.cupsColorSpace == CUPS_CSPACE_RGB)
  						{
  							if(y == 0) DoLog("Doing transform & dither (CMYK) stripe %d line %d\n", Stripe, y);
@@ -120,7 +128,7 @@
  							{
 --- a/configure.ac
 +++ b/configure.ac
-@@ -19,11 +19,11 @@
+@@ -19,14 +19,19 @@
  AC_CHECK_LIB(cups, ppdOpenFile)
  
  #-lcupsdriver for cups < ver 1.6
@@ -135,3 +143,11 @@
  	HAVE_LIBCUPSFILTERS="1"
  fi
  
++AC_SEARCH_LIBS(ppdCMYKLoad, ppd)
++if test "$ac_cv_search_ppdCMYKLoad" = "-lppd"; then :
++	HAVE_LIBPPD="1"
++fi
++
+ AC_SEARCH_LIBS(cupsRasterOpen, cupsimage cupsfilters cups)
+ if test "$ac_cv_search_cupsRasterOpen" != "no"; then :
+ 	HAVE_LIBCUPSIMAGE="1"
