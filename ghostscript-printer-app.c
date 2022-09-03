@@ -55,7 +55,7 @@ static pr_spooling_conversion_t ghostscript_convert_pdf_to_fx_pdf =
   {
     {
       cfFilterPDFToPDF,
-      "application/vnd.cups-pdf",
+      NULL,
       "pdftopdf"
     },
     {
