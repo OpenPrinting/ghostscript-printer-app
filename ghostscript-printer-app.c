@@ -60,10 +60,9 @@ static pr_spooling_conversion_t ghostscript_convert_pdf_to_fx_pdf =
     },
     {
       ppdFilterExternalCUPS,
-      &((ppd_filter_external_cups_t){
+      &((cf_filter_external_t){
 	"pdftopdffx",
 	0,
-	NULL,
 	0,
 	NULL,
 	NULL
