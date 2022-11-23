@@ -13,7 +13,7 @@
 // Include necessary headers...
 //
 
-#include <pappl-retrofit/base.h>
+#include <pappl-retrofit.h>
 
 
 //
@@ -96,22 +96,22 @@ ghostscript_autoadd(const char *device_info,	// I - Device name (unused)
 
   // 
   // Find the best-matching PPD file to expicitly support our printer model
-  if (!((ret = pr_best_matching_ppd(device_id, global_data)) != 0 ||
+  if (!((ret = prBestMatchingPPD(device_id, global_data)) != 0 ||
 	// No dedicated support for this model, look at the COMMAND
 	// SET (CMD) key in the device ID for the list of printer
 	// languages and select a generic driver if we find a
 	// supported language
-	(pr_supports_postscript(device_id) &&
-	 (ret = pr_best_matching_ppd("MFG:Generic;MDL:PostScript Printer;",
+	(prSupportsPostScript(device_id) &&
+	 (ret = prBestMatchingPPD("MFG:Generic;MDL:PostScript Printer;",
 				     global_data)) != 0) ||
-	(pr_supports_pclxl(device_id) &&
-	 (ret = pr_best_matching_ppd("MFG:Generic;MDL:PCL 6/PCL XL Printer;",
+	(prSupportsPCLXL(device_id) &&
+	 (ret = prBestMatchingPPD("MFG:Generic;MDL:PCL 6/PCL XL Printer;",
 				   global_data)) != 0) ||
-	(pr_supports_pcl5c(device_id) &&
-	 (ret = pr_best_matching_ppd("MFG:Generic;MDL:PCL 5c Printer;",
+	(prSupportsPCL5c(device_id) &&
+	 (ret = prBestMatchingPPD("MFG:Generic;MDL:PCL 5c Printer;",
 				     global_data)) != 0) ||
-	(pr_supports_pcl5(device_id) &&
-	 (ret = pr_best_matching_ppd("MFG:Generic;MDL:PCL 5e Printer;",
+	(prSupportsPCL5(device_id) &&
+	 (ret = prBestMatchingPPD("MFG:Generic;MDL:PCL 5e Printer;",
 				     global_data)) != 0)))
     // Printer does not support our PDL, it is not supported by this
     // Printer Application
@@ -146,12 +146,12 @@ main(int  argc,				// I - Number of command-line arguments
   cupsArrayAdd(spooling_conversions, &ghostscript_convert_pdf_to_fx_pdf);
 
   // Standard conversion rules
-  cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_pdf);
-  cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_raster);
-  cupsArrayAdd(spooling_conversions, &pr_convert_pdf_to_ps);
-  cupsArrayAdd(spooling_conversions, &pr_convert_ps_to_ps);
-  cupsArrayAdd(spooling_conversions, &pr_convert_ps_to_pdf);
-  cupsArrayAdd(spooling_conversions, &pr_convert_ps_to_raster);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PDF_TO_PDF);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PDF_TO_RASTER);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PDF_TO_PS);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PS_TO_PS);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PS_TO_PDF);
+  cupsArrayAdd(spooling_conversions, (void *)&PR_CONVERT_PS_TO_RASTER);
 
   // Array of stream formats, most desirables first
   //
@@ -159,9 +159,9 @@ main(int  argc,				// I - Number of command-line arguments
   // PostScript comes second as it is Ghostscript's streamable
   // input format.
   stream_formats = cupsArrayNew(NULL, NULL);
-  cupsArrayAdd(stream_formats, &pr_stream_cups_raster);
-  cupsArrayAdd(stream_formats, &pr_stream_postscript);
-  cupsArrayAdd(stream_formats, &pr_stream_pdf);
+  cupsArrayAdd(stream_formats, (void *)&PR_STREAM_CUPS_RASTER);
+  cupsArrayAdd(stream_formats, (void *)&PR_STREAM_POSTSCRIPT);
+  cupsArrayAdd(stream_formats, (void *)&PR_STREAM_PDF);
 
   // Array of regular expressions for driver priorization
   // For some printers the "(recommended)" is missing ...
@@ -211,10 +211,10 @@ main(int  argc,				// I - Number of command-line arguments
     PR_COPTIONS_NO_PAPPL_BACKENDS |
     PR_COPTIONS_CUPS_BACKENDS,
     ghostscript_autoadd,      // Auto-add (driver assignment) callback
-    pr_identify,              // Printer identify callback
-    pr_testpage,              // Test page print callback
+    prIdentify,              // Printer identify callback
+    prTestPage,              // Test page print callback
     NULL,                     // No extra setup steps for the system
-    pr_setup_device_settings_page, // Set up "Device Settings" printer web
+    prSetupDeviceSettingsPage, // Set up "Device Settings" printer web
                               // interface page
     spooling_conversions,     // Array of data format conversion rules for
                               // printing in spooling mode
@@ -224,7 +224,7 @@ main(int  argc,				// I - Number of command-line arguments
     "snmp,dnssd,usb",         // CUPS backends to be used exclusively
                               // If empty all but the ignored backends are used
     TESTPAGE,                 // Test page (printable file), used by the
-                              // standard test print callback pr_testpage()
+                              // standard test print callback prTestPage()
     " +Foomatic/(.+)$| +(PDF|PXL|PCL5)$",
                               // Regular expression to separate the
                               // extra information after make/model in
@@ -244,5 +244,5 @@ main(int  argc,				// I - Number of command-line arguments
                               // list matches, gets the priority.
   };
 
-  return (pr_retrofit_printer_app(&printer_app_config, argc, argv));
+  return (prRetroFitPrinterApp(&printer_app_config, argc, argv));
 }
