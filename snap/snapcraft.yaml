@@ -31,13 +31,6 @@ apps:
     plugs: [avahi-control, home, network, network-bind, raw-usb]
 
 parts:
-  patches:
-    plugin: dump
-    source: snap/local/
-    organize:
-      '*.patch' : patches/
-    override-prime: ""
-
   pappl:
     source: https://github.com/michaelrsweet/pappl
     source-type: git
@@ -103,6 +96,9 @@ parts:
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
     build-packages:
       - autoconf
       - automake
@@ -132,7 +128,7 @@ parts:
       - -usr/share/doc-base
       - -usr/share/lintian
       - -snap
-    after: [cups, cups-filters, pappl]
+    after: [cups, pappl, libcupsfilters, libppd]
 
   qpdf:
     source: https://github.com/qpdf/qpdf/releases/download/release-qpdf-10.6.3/qpdf-10.6.3.tar.gz
@@ -144,6 +140,10 @@ parts:
       - zlib1g-dev
     stage-packages:
       - libjpeg-turbo8
+    stage:
+      # The *.la file which gets installed by "make install" contains a
+      # wrong prefix, breaking parts of this Snap which use this library
+      - -usr/lib/lib*.la
     prime:
       - lib/*/lib*.so*
       - usr/lib/lib*.so*
@@ -170,7 +170,7 @@ parts:
     # will be included from 10.01.0 on
     override-build: |
       set -eux
-      patch -p1 < $SNAPCRAFT_STAGE/patches/ghostscript-cups-do-not-match-custom-page-sizes.patch
+      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/ghostscript-cups-do-not-match-custom-page-sizes.patch
       snapcraftctl build
     # As this Printer Application supports Ghostscript's built-in drivers,
     # we build them all.
@@ -216,7 +216,7 @@ parts:
     # sample.drv file
     override-build: |
       set -eux
-      patch -p1 < $SNAPCRAFT_STAGE/patches/cups-dnssd-backend-socket-only.patch
+      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/cups-dnssd-backend-socket-only.patch
       # We use "--with-tls=gnutls" here, as current CUPS defaults to SSL here
       # and this is buggy, causing a segfault when serving out a HTTPS web\
       # interface page.
@@ -299,51 +299,139 @@ parts:
       - usr/share/ppd/cups.drv
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/lib/ghostscript-printer-app/backend/*
-    after: [patches]
+
+  libcupsfilters:
+    source: https://github.com/OpenPrinting/libcupsfilters
+    source-type: git
+    plugin: autotools
+    # We only need libcupsfilters itself. so we simply do not prime the
+    # auxiliary files (/usr/share)
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --disable-avahi
+      - --disable-mutool
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - liblcms2-dev
+      - libpoppler-cpp-dev
+      - libpng-dev
+      - libjpeg-dev
+      - libtiff5-dev
+      - zlib1g-dev
+      - libfontconfig1-dev
+      - libdbus-1-dev
+      - libexif-dev
+    stage-packages:
+      - libpoppler-cpp0v5
+      - libjbig0
+      - liblcms2-2
+      - libnspr4
+      - libnss3
+      - libopenjp2-7
+      - libpoppler97
+      - libtiff5
+      - libwebp6
+      - libexif12
+    stage:
+      # The *.la file which gets installed by "make install" contains a
+      # wrong prefix, breaking parts of this Snap which use this library
+      - -usr/lib/lib*.la
+    prime:
+      - -etc
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+       - usr/share/cups
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
+    after: [cups, qpdf, ghostscript]
+
+  libppd:
+    source: https://github.com/OpenPrinting/libppd
+    source-type: git
+    plugin: autotools
+    # We need libppd itself, the PPD compiler ppdc and its auxiliary files
+    # (/usr/share/ppdc/)
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --disable-mutool
+      - --disable-pdftocairo
+      - --disable-acroread
+      - --enable-ppdc-utils
+      - --with-pdftops-path=/snap/ghostscript-printer-app/current/usr/bin/pdftops
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - poppler-utils
+    prime:
+      - -etc
+      - -var
+      - -usr/bin/ppdc
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
+      - usr/share/ppdc/*
+    after: [cups, ghostscript, libcupsfilters]
 
   cups-filters:
     source: https://github.com/OpenPrinting/cups-filters
     source-type: git
     plugin: autotools
-    # We need the 2 libraries: libcupsfilters and libppd,
-    # foomatic-rip (for the Foomatic PPDs for the GHostscript drivers and
-    # also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
-    # the rastertoepson, rastertopclx, and texttotext filters (for the
-    # included PPD files), the PPD compiler ppdc, the include files for
-    # *.drv files, and also all PPD and *.drv files
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+    # We need foomatic-rip (for the Foomatic PPDs for the Ghostscript drivers
+    # and also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
+    # the rastertoepson, rastertopclx (for the included PPD files), and also
+    # all PPD and *.drv files
     override-build: |
       set -eux
       ./autogen.sh
-      ./configure --disable-avahi --disable-ldap --disable-foomatic --disable-braille --disable-mutool --without-rcdir --enable-ppdc-utils --with-pdftops-path=/snap/ghostscript-printer-app/current/usr/bin/pdftops
-      make libppd.la
-      make libcupsfilters.la
+      ./configure --disable-mutool --enable-ppdc-utils
       make foomatic-rip
       make gstoraster
       make pdftops
       make rastertoescpx
       make rastertopclx
-      make ppdc
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib
-      cp .libs/lib* $SNAPCRAFT_PART_INSTALL/usr/lib/
       mkdir -p $SNAPCRAFT_PART_INSTALL
-      cp .libs/foomatic-rip $SNAPCRAFT_PART_INSTALL
-      cp .libs/gstoraster $SNAPCRAFT_PART_INSTALL
-      cp .libs/pdftops $SNAPCRAFT_PART_INSTALL
-      cp .libs/rastertoescpx $SNAPCRAFT_PART_INSTALL
-      cp .libs/rastertopclx $SNAPCRAFT_PART_INSTALL
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/ppd
-      cp ppd/*.h $SNAPCRAFT_PART_INSTALL/usr/include/ppd/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/cupsfilters
-      cp cupsfilters/*.h $SNAPCRAFT_PART_INSTALL/usr/include/cupsfilters/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/pkgconfig
-      cp *.pc $SNAPCRAFT_PART_INSTALL/usr/lib/pkgconfig/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
-      cp .libs/ppdc $SNAPCRAFT_PART_INSTALL/usr/bin/
+      cp foomatic-rip $SNAPCRAFT_PART_INSTALL
+      cp gstoraster $SNAPCRAFT_PART_INSTALL
+      cp pdftops $SNAPCRAFT_PART_INSTALL
+      cp rastertoescpx $SNAPCRAFT_PART_INSTALL
+      cp rastertopclx $SNAPCRAFT_PART_INSTALL
       mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppdc
-      cp ppd/*.defs ppd/epson.h ppd/hp.h ppd/label.h $SNAPCRAFT_PART_INSTALL/usr/share/ppdc/
       cp filter/escp.h filter/pcl.h $SNAPCRAFT_PART_INSTALL/usr/share/ppdc/
       # Compile cupsfilters.drv into PPD files
-      ./ppdc -I $SNAPCRAFT_PART_INSTALL/usr/share/ppdc -d ppd drv/cupsfilters.drv
+      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_PART_INSTALL/usr/share/ppdc -I $SNAPCRAFT_STAGE/usr/share/ppdc -d ppd drv/cupsfilters.drv
       # Remove PPD files which are not useful in the Printer Application
       rm -f ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
       # Compress the included PPD files, both ready-made and compiled
@@ -360,30 +448,8 @@ parts:
       - pkg-config
       - g++
       - sharutils
-      - poppler-utils
-      - libglib2.0-dev
-      - liblcms2-dev
-      - libpoppler-cpp-dev
-      - libpng-dev
-      - libjpeg-dev
-      - libtiff5-dev
-      - zlib1g-dev
-      - libfontconfig1-dev
-      - libdbus-1-dev
-      - libexif-dev
-      - librsvg2-bin
     stage-packages:
       - poppler-utils
-      - libpoppler-cpp0v5
-      - libjbig0
-      - liblcms2-2
-      - libnspr4
-      - libnss3
-      - libopenjp2-7
-      - libpoppler97
-      - libtiff5
-      - libwebp6
-      - libexif12
     organize:
       foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
       gstoraster: usr/lib/ghostscript-printer-app/filter/gstoraster
@@ -393,7 +459,6 @@ parts:
     prime:
       - -etc/fonts
       - -var
-      - -usr/bin/ppdc
       - -usr/include
       - -usr/lib/pkgconfig
       - -usr/share/fonts
@@ -409,7 +474,7 @@ parts:
       - usr/lib/ghostscript-printer-app
       - usr/share/ppd/cups-filters-ppds
       - usr/share/ppdc/*
-    after: [cups, qpdf, ghostscript, pyppd]
+    after: [cups, qpdf, ghostscript, pyppd, libcupsfilters, libppd]
 
   pyppd:
     source: https://github.com/OpenPrinting/pyppd
@@ -739,12 +804,15 @@ parts:
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
     override-build: |
       set -eux
       # In libcupsfilter2 the API for driver-relevant functions has changed
       # to introduce log functions. This patch does the needed adaptations
       # on the code of c2esp.
-      patch -p1 < $SNAPCRAFT_STAGE/patches/c2esp-libcupsfilters2-api.patch
+      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/c2esp-libcupsfilters2-api.patch
       autoreconf --install
       snapcraftctl build
       perl -p -i -e 's:/usr/lib/cups/filter/::g' */*.drv
@@ -758,7 +826,7 @@ parts:
     prime:
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/share/ppd/*.drv
-    after: [cups, cups-filters]
+    after: [cups, libcupsfilters, libppd, cups-filters]
 
   dymo-cups-drivers:
     # Upstream source is still available but to include Debian's patches, we
@@ -879,7 +947,7 @@ parts:
     prime:
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/share/ppd/fxlinuxprint-ppds
-    after: [cups, pyppd, patches]
+    after: [cups, pyppd]
 
   m2300w:
     # Upstream source is still available but to include Debian's patches, we
@@ -1155,6 +1223,9 @@ parts:
     make-parameters:
       - LDFLAGS="$LDFLAGS -ljpeg"
       - SNAP=1
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
     # To improve convenience for developers (and everyone who wants to
     # build from source), we do a "make clean" before "make" here,
     # because if we had done "make" off-Snap, directly in the source
@@ -1185,7 +1256,7 @@ parts:
       - usr/share/ghostscript-printer-app
       - -var
       - -usr/share/man
-    after: [pappl-retrofit, pappl, cups-filters, foomatic-db]
+    after: [pappl-retrofit, pappl, libcupsfilters, libppd, cups-filters, foomatic-db]
 
   scripts:
     plugin: dump
