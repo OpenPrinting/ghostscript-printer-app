@@ -1,5 +1,5 @@
 name: ghostscript-printer-app
-base: core20
+base: core22
 version: '1.0'
 summary: Ghostscript Printer Application
 description: |
@@ -53,7 +53,7 @@ parts:
       # PAPPL's build system does not insert the LDFLAGS when linking.
       # Patching Makedefs.in to fix this
       perl -p -i -e 's/^(\s*DSOFLAGS\s*=\s*\S*\s+)/\1\$\(LDFLAGS\) /' Makedefs.in
-      snapcraftctl build
+      craftctl default
     autotools-configure-parameters:
       - --prefix=/usr
       - --with-papplstatedir=/var/snap/ghostscript-printer-app/common
@@ -102,7 +102,7 @@ parts:
       - --prefix=/usr
     # To find the libraries built in this Snap
     build-environment:
-      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
     build-packages:
       - autoconf
       - automake
@@ -224,7 +224,7 @@ parts:
     # sample.drv file
     override-build: |
       set -eux
-      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/cups-dnssd-backend-socket-only.patch
+      patch -p1 < $CRAFT_PROJECT_DIR/snap/local/cups-dnssd-backend-socket-only.patch
       # We use "--with-tls=gnutls" here, as current CUPS defaults to SSL here
       # and this is buggy, causing a segfault when serving out a HTTPS web
       # interface page.
@@ -242,24 +242,24 @@ parts:
       perl -p -i -e 's/"CUPS_DATADIR"/"USB_QUIRK_DIR"/' usb-libusb.c
       make snmp dnssd socket ipp ipps lpd usb
       cd ..
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib
-      cp cups/libcups*.a $SNAPCRAFT_PART_INSTALL/usr/lib/
-      cp cups/libcups*.so* $SNAPCRAFT_PART_INSTALL/usr/lib/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/include/cups
-      cp cups/*.h $SNAPCRAFT_PART_INSTALL/usr/include/cups/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
-      cp cups-config $SNAPCRAFT_PART_INSTALL/usr/bin/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertoepson $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertohp $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      cp filter/rastertolabel $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib
+      cp cups/libcups*.a $CRAFT_PART_INSTALL/usr/lib/
+      cp -P cups/libcups*.so* $CRAFT_PART_INSTALL/usr/lib/
+      mkdir -p $CRAFT_PART_INSTALL/usr/include/cups
+      cp cups/*.h $CRAFT_PART_INSTALL/usr/include/cups/
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp cups-config $CRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertoepson $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertohp $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertolabel $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
       ( cd backend; \
-        cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/ \
+        cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/ \
       )
-      cp conf/snmp.conf $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      cp ppdc/sample.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd/cups.drv
+      cp conf/snmp.conf $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp ppdc/sample.drv $CRAFT_PART_INSTALL/usr/share/ppd/cups.drv
     build-packages:
       - patch
       - gettext
@@ -287,10 +287,7 @@ parts:
       - libusb-1.0-0
       - libavahi-common3
       - libavahi-client3
-      - libicu66
-      - libjson-glib-1.0-0
-      - libsoup2.4-1
-      - libxml2
+      - libicu70
     prime:
       - -etc/fonts
       - -var
@@ -307,6 +304,13 @@ parts:
       - usr/share/ppd/cups.drv
       - usr/lib/ghostscript-printer-app/filter/*
       - usr/lib/ghostscript-printer-app/backend/*
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libdconf.*
+      - -usr/lib/*/libicuio.*
+      - -usr/lib/*/libicutest.*
+      - -usr/lib/*/libicutu.*
+      - -usr/lib/*/libicuuc.*
+      - -usr/lib/*/libicui18n.*
 
   libcupsfilters:
     source: https://github.com/OpenPrinting/libcupsfilters
@@ -343,9 +347,9 @@ parts:
       - libnspr4
       - libnss3
       - libopenjp2-7
-      - libpoppler97
+      - libpoppler118
       - libtiff5
-      - libwebp6
+      - libwebp7
       - libexif12
     stage:
       # The *.la file which gets installed by "make install" contains a
@@ -366,6 +370,8 @@ parts:
       - usr/lib/lib*.so*
       - usr/lib/*/lib*.so*
       - usr/lib/*/nss
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libssl3.*
     after: [cups, qpdf, ghostscript]
 
   libppd:
@@ -384,7 +390,7 @@ parts:
       - --with-pdftops-path=/snap/ghostscript-printer-app/current/usr/bin/pdftops
     # To find the libraries built in this Snap
     build-environment:
-      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
     build-packages:
       - gettext
       - autoconf
@@ -419,7 +425,7 @@ parts:
     plugin: autotools
     # To find the libraries built in this Snap
     build-environment:
-      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
     # We need foomatic-rip (for the Foomatic PPDs for the Ghostscript drivers
     # and also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
     # the rastertoepson, rastertopclx (for the included PPD files), and also
@@ -433,24 +439,24 @@ parts:
       make pdftops
       make rastertoescpx
       make rastertopclx
-      mkdir -p $SNAPCRAFT_PART_INSTALL
-      cp foomatic-rip $SNAPCRAFT_PART_INSTALL
-      cp gstoraster $SNAPCRAFT_PART_INSTALL
-      cp pdftops $SNAPCRAFT_PART_INSTALL
-      cp rastertoescpx $SNAPCRAFT_PART_INSTALL
-      cp rastertopclx $SNAPCRAFT_PART_INSTALL
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppdc
-      cp filter/escp.h filter/pcl.h $SNAPCRAFT_PART_INSTALL/usr/share/ppdc/
+      mkdir -p $CRAFT_PART_INSTALL
+      cp foomatic-rip $CRAFT_PART_INSTALL
+      cp gstoraster $CRAFT_PART_INSTALL
+      cp pdftops $CRAFT_PART_INSTALL
+      cp rastertoescpx $CRAFT_PART_INSTALL
+      cp rastertopclx $CRAFT_PART_INSTALL
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppdc
+      cp filter/escp.h filter/pcl.h $CRAFT_PART_INSTALL/usr/share/ppdc/
       # Compile cupsfilters.drv into PPD files
-      $SNAPCRAFT_STAGE/usr/bin/ppdc -I $SNAPCRAFT_PART_INSTALL/usr/share/ppdc -I $SNAPCRAFT_STAGE/usr/share/ppdc -d ppd drv/cupsfilters.drv
+      $CRAFT_STAGE/usr/bin/ppdc -I $CRAFT_PART_INSTALL/usr/share/ppdc -I $CRAFT_STAGE/usr/share/ppdc -d ppd drv/cupsfilters.drv
       # Remove PPD files which are not useful in the Printer Application
       rm -f ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
       # Compress the included PPD files, both ready-made and compiled
       cp ppdfiles/*.ppd ppd
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o cups-filters-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o cups-filters-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv cups-filters-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv cups-filters-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - gettext
       - autoconf
@@ -485,6 +491,18 @@ parts:
       - usr/lib/ghostscript-printer-app
       - usr/share/ppd/cups-filters-ppds
       - usr/share/ppdc/*
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libcairo.*
+      - -usr/lib/*/libssl3.*
+      - -usr/lib/*/libX11.*
+      - -usr/lib/*/libXau.*
+      - -usr/lib/*/libXdmcp.*
+      - -usr/lib/*/libXext.*
+      - -usr/lib/*/libXrender.*
+      - -usr/lib/*/libpixman-1.*
+      - -usr/lib/*/libxcb.*
+      - -usr/lib/*/libxcb-render.*
+      - -usr/lib/*/libxcb-shm.*
     after: [cups, qpdf, ghostscript, pyppd, libcupsfilters, libppd]
 
   pyppd:
@@ -539,11 +557,11 @@ parts:
       # Pre-build all PPDs from the Foomatic XML data
       FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
       # Compress the Foomatic PPDs in a self-extracting archive
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o foomatic-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o foomatic-ppds ppd
       rm -rf ppd
       # Compress the manufacturer PPDs in a self-extracting archive
       mv usr/share/foomatic/db/source/PPD ppd
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o manufacturer-ppds ppd
     build-packages:
       - perl-base
       - python3
@@ -588,12 +606,12 @@ parts:
     plugin: autotools
     build-environment:
       - PYTHON: python3
-      - LD_LIBRARY_PATH: $SNAPCRAFT_STAGE/usr/lib:$LD_LIBRARY_PATH
-      - CUPS_DATADIR: $SNAPCRAFT_STAGE/usr/share/cups
+      - LD_LIBRARY_PATH: $CRAFT_STAGE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+      - CUPS_DATADIR: $CRAFT_STAGE/usr/share/cups
       - on arm64:
         - BUILDARCH: aarch64-unknown-linux-gnu
       - else:
-        - BUILDARCH: $SNAPCRAFT_ARCH_TRIPLET
+        - BUILDARCH: $CRAFT_ARCH_TRIPLET
     # Paremeter list here only needed for upstream source, but no need to
     # comment out for Debian source
     autotools-configure-parameters:
@@ -664,7 +682,7 @@ parts:
       # corrected, only the /var/... ones
       perl -p -i -e 's:\"/var/lib/hp:\"/var/snap/ghostscript-printer-app/common/var/:' common/utils.[ch]
       # Do the "./configure; make; make install" (for upstream source)
-      # snapcraftctl build
+      # craftctl default
       # Do the "make; make install" (for Debian source)
       make
       make DESTDIR=`pwd`/../install install
@@ -700,7 +718,7 @@ parts:
       - xz-utils
       - pyppd
     stage-packages:
-      - libsnmp35
+      - libsnmp40
     organize:
       snap/ghostscript-printer-app/current/etc/hp/hplip.conf: etc/hp/hplip.conf
     prime:
@@ -709,6 +727,16 @@ parts:
       - lib/*/lib*.so*
       - usr/lib/lib*.so*
       - usr/lib/*/lib*.so*
+      # Reported unused by snapcraft linter
+      - -usr/lib/libhpipp.*
+      - -usr/lib/*/libgdbm.*
+      - -usr/lib/*/libgdbm_compat.*
+      - -usr/lib/*/libnetsnmpagent.*
+      - -usr/lib/*/libnetsnmpmibs.*
+      - -usr/lib/*/libpci*
+      - -usr/lib/*/libperl.*
+      - -usr/lib/*/libsensors.*
+      - -usr/lib/*/libsnmp.*
     after: [cups, cups-filters]
 
   # Unmaintained printer drivers which come as a filter to convert generic
@@ -727,14 +755,14 @@ parts:
     override-build: |
       set -eux
       make -j2
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
-      cp c2050 $SNAPCRAFT_PART_INSTALL/usr/bin
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp c2050 $CRAFT_PART_INSTALL/usr/bin
     stage-packages:
       - libjbig0
       - libjpeg-turbo8
       - libpng16-16
       - libtiff5
-      - libwebp6
+      - libwebp7
     prime:
       - usr/bin/c2050
       - lib/*/lib*.so*
@@ -752,8 +780,8 @@ parts:
     override-build: |
       set -eux
       make -j2
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin
-      cp cjet $SNAPCRAFT_PART_INSTALL/usr/bin
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp cjet $CRAFT_PART_INSTALL/usr/bin
     prime:
       - usr/bin/cjet
 
@@ -772,7 +800,7 @@ parts:
       set -eux
       # Refresh build system, because of the Debian patches
       autoreconf --install
-      snapcraftctl build
+      craftctl default
     build-packages:
       - autoconf
     prime:
@@ -799,7 +827,7 @@ parts:
       perl -p -i -e 's:(\s+)SYSCONFDIR "(/pnm2ppa\.):\1"/var/snap/ghostscript-printer-app/common/pnm2ppa\2:' pnm2ppa.h
       # Update config.guess/config.sub, pnm2ppa seems to be of pre-arm64 era
       cp /usr/share/misc/config.* .
-      snapcraftctl build
+      craftctl default
     build-packages:
       - autotools-dev
     prime:
@@ -825,18 +853,18 @@ parts:
       - --prefix=/usr
     # To find the libraries built in this Snap
     build-environment:
-      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
     override-build: |
       set -eux
       # In libcupsfilter2 the API for driver-relevant functions has changed
       # to introduce log functions. This patch does the needed adaptations
       # on the code of c2esp.
-      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/c2esp-libcupsfilters2-api.patch
+      patch -p1 < $CRAFT_PROJECT_DIR/snap/local/c2esp-libcupsfilters2-api.patch
       autoreconf --install
-      snapcraftctl build
+      craftctl default
       perl -p -i -e 's:/usr/lib/cups/filter/::g' */*.drv
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      cp */*.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd/
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp */*.drv $CRAFT_PART_INSTALL/usr/share/ppd/
     build-packages:
       - autoconf
       - automake
@@ -862,11 +890,11 @@ parts:
     override-build: |
       set -eux
       autoreconf --install
-      snapcraftctl build
+      craftctl default
       # Compress the included PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv dymo-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      $CRAFT_STAGE/bin/pyppd -v -o dymo-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv dymo-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -895,25 +923,25 @@ parts:
       # Adjust paths in Makefile
       cp Makefile Makefile.orig
       perl -p -i -e  's:\$\(PREFIX\)/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' Makefile
-      make all PREFIX=/snap/ghostscript-printer-app/current/usr CUPS_SERVERBIN=$SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app CUPS_DEVEL=1 CUPS_GOODAPI=1
+      make all PREFIX=/snap/ghostscript-printer-app/current/usr CUPS_SERVERBIN=$CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app CUPS_DEVEL=1 CUPS_GOODAPI=1
       cp Makefile.orig Makefile
-      make install PREFIX=$SNAPCRAFT_PART_INSTALL/usr CUPS_SERVERBIN=$SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app
+      make install PREFIX=$CRAFT_PART_INSTALL/usr CUPS_SERVERBIN=$CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app
       # Install missing files
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/bin/
-      cp getweb $SNAPCRAFT_PART_INSTALL/usr/bin/
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      rm -f $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
-      cp command2foo2lava-pjl $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin/
+      cp getweb $CRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      rm -f $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      cp command2foo2lava-pjl $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
       # Adjust the paths to the auxiliary files
-      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
-      perl -p -i -e  's:\$PREFIX/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
-      perl -p -i -e  's:/usr/share/":/var/snap/ghostscript-printer-app/common/foo2zjs/":' $SNAPCRAFT_PART_INSTALL/usr/bin/getweb
-      perl -p -i -e  's:/usr/share/\$FOO:/var/snap/ghostscript-printer-app/common/foo2zjs/\$FOO:' $SNAPCRAFT_PART_INSTALL/usr/bin/printer-profile*
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:\$PREFIX/share/foo2:/var/snap/ghostscript-printer-app/common/foo2zjs/foo2:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:/usr/share/":/var/snap/ghostscript-printer-app/common/foo2zjs/":' $CRAFT_PART_INSTALL/usr/bin/getweb
+      perl -p -i -e  's:/usr/share/\$FOO:/var/snap/ghostscript-printer-app/common/foo2zjs/\$FOO:' $CRAFT_PART_INSTALL/usr/bin/printer-profile*
       # Use $TMPDIR for temporary directory
-      perl -p -i -e  's:/tmp:\$TMPDIR:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Add "-dNOINTERPOLATE" to the Ghostscript command lines to make
       # Ghostscript rendering the pages significantly faster
-      perl -p -i -e 's/dNOPAUSE/dNOPAUSE -dNOINTERPOLATE/g' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e 's/dNOPAUSE/dNOPAUSE -dNOINTERPOLATE/g' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Set up the PPD file collection
       cp -r PPD ppd
       # Remove the PPDs of printers which need their firmware loaded whenever
@@ -923,10 +951,10 @@ parts:
         rm ppd/HP-LaserJet_$model.ppd
       done
       # Compress the included PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o foo2zjs-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o foo2zjs-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv foo2zjs-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv foo2zjs-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - dc
     stage-packages:
@@ -956,11 +984,11 @@ parts:
     override-build: |
       set -eux
       autoreconf --install
-      snapcraftctl build
+      craftctl default
       # Compress the included PPD file
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o fxlinuxprint-ppds .
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv fxlinuxprint-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      $CRAFT_STAGE/bin/pyppd -v -o fxlinuxprint-ppds .
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv fxlinuxprint-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -996,30 +1024,30 @@ parts:
       autoreconf --install
       ./configure --prefix=/usr
       make -j2
-      make INSTROOT=$SNAPCRAFT_PART_INSTALL install
+      make INSTROOT=$CRAFT_PART_INSTALL install
       # Adjust the paths to the auxiliary files
-      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
-      perl -p -i -e  's:SHARE=.*:SHARE=/var/snap/ghostscript-printer-app/common/m2300w:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/snap/ghostscript-printer-app/current/usr:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:SHARE=.*:SHARE=/var/snap/ghostscript-printer-app/common/m2300w:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Use $TMPDIR for temporary directory
-      perl -p -i -e  's:/tmp:\$TMPDIR:' $SNAPCRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
       # Remove unneeded old foomatic-rip file
-      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/m2300w/0.51/foomatic
+      rm -rf $CRAFT_PART_INSTALL/usr/share/m2300w/0.51/foomatic
       # Package the two PPDs and their second version counterpart.
-      mkdir -p $SNAPCRAFT_PART_INSTALL/ppd
+      mkdir -p $CRAFT_PART_INSTALL/ppd
       for n in 2300 2400; do
-        mv $SNAPCRAFT_PART_INSTALL/usr/share/cups/model/Minolta/magicolor_${n}W-m${n}w.ppd $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+        mv $CRAFT_PART_INSTALL/usr/share/cups/model/Minolta/magicolor_${n}W-m${n}w.ppd $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
         # Create copies for "KONICA MINOLTA" manufacturer name
-        perl -p -e 's/Minolta/KONICA MINOLTA/g' $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd > $SNAPCRAFT_PART_INSTALL/ppd/KONICA_MINOLTA-magicolor_${n}W-m2300w.ppd
+        perl -p -e 's/Minolta/KONICA MINOLTA/g' $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd > $CRAFT_PART_INSTALL/ppd/KONICA_MINOLTA-magicolor_${n}W-m2300w.ppd
         # Correct originals for "Minolta" manufacturer name
-        perl -p -i -e 's/KONICA MINOLTA/Minolta/g' $SNAPCRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+        perl -p -i -e 's/KONICA MINOLTA/Minolta/g' $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
       done
-      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/cups
+      rm -rf $CRAFT_PART_INSTALL/usr/share/cups
       # Compress the PPD files
-      ( cd $SNAPCRAFT_PART_INSTALL
-        $SNAPCRAFT_STAGE/bin/pyppd -v -o m2300w-ppds ppd
+      ( cd $CRAFT_PART_INSTALL
+        $CRAFT_STAGE/bin/pyppd -v -o m2300w-ppds ppd
         rm -rf ppd
-        mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-        mv m2300w-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+        mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+        mv m2300w-ppds $CRAFT_PART_INSTALL/usr/share/ppd
       )
     build-packages:
       - autoconf
@@ -1060,15 +1088,15 @@ parts:
       # Use $TMPDIR for temporary directory
       perl -p -i -e 's:/tmp:\$TMPDIR:' filters/*
       # Create filter installation directory
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/cups/filter/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/cups/filter/
       # Correct language in PPD file      
       perl -p -i -e 's/^(\*LanguageVersion:\s+).*/\1Portuguese/' MFP/OK4X1PSBR.ppd
       # Install the files
-      snapcraftctl build
+      craftctl default
       # Compress the included PPD files
-      ( cd $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      ( cd $CRAFT_PART_INSTALL/usr/share/ppd
         ln -s okidata ppd
-        $SNAPCRAFT_STAGE/bin/pyppd -v -o oki-ppds ppd
+        $CRAFT_STAGE/bin/pyppd -v -o oki-ppds ppd
         rm ppd
       )
     organize:
@@ -1092,7 +1120,7 @@ parts:
     override-build: |
       set -eux
       autoreconf --install
-      snapcraftctl build
+      craftctl default
       # Generate PPD files for the HP LaserJet 3500 and 3600
       mkdir ppd
       cp HP-Color_LaserJet_3550-pxljr.ppd ppd
@@ -1106,10 +1134,10 @@ parts:
       perl -p -i -e 's,(\-sDEVICE=ijs),-dNOINTERPOLATE \1,' *.ppd
       # Compress the PPD files
       cd ..
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o pxljr-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o pxljr-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv pxljr-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv pxljr-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -1137,12 +1165,12 @@ parts:
     override-build: |
       set -eux
       # Copy the filter to the right place
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      cp rastertosag-gdi $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp rastertosag-gdi $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
       # Compress the PPD files
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o rastertosag-gdi-ppds ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv rastertosag-gdi-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      $CRAFT_STAGE/bin/pyppd -v -o rastertosag-gdi-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv rastertosag-gdi-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     prime:
       - usr/lib/ghostscript-printer-app/filter/rastertosag-gdi
       - usr/share/ppd/rastertosag-gdi-ppds
@@ -1160,15 +1188,15 @@ parts:
     plugin: nil
     override-build: |
       set -eux
-      make V=1 rastertoqpdl_LIBS="-lcupsimage -lcups -lpthread -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" pstoqpdl_LIBS="-lcupsimage -lcups -ljbig -L$SNAPCRAFT_STAGE/usr/lib/" CUPSFILTER="/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter"
+      make V=1 rastertoqpdl_LIBS="-lcupsimage -lcups -lpthread -ljbig -L$CRAFT_STAGE/usr/lib/" pstoqpdl_LIBS="-lcupsimage -lcups -ljbig -L$CRAFT_STAGE/usr/lib/" CUPSFILTER="/snap/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter"
       # Copy the filters to the right place
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
-      cp optimized/*toqpdl $SNAPCRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp optimized/*toqpdl $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
       # Compress the PPD files
       cp *.ppd ppd
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o splix-ppds ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv splix-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      $CRAFT_STAGE/bin/pyppd -v -o splix-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv splix-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - libjbig-dev
     stage-packages:
@@ -1198,9 +1226,9 @@ parts:
       - -DCMAKE_INSTALL_PREFIX=/usr
     override-build: |
       set -eux
-      snapcraftctl build
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      cp *.drv $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp *.drv $CRAFT_PART_INSTALL/usr/share/ppd
     organize:
       usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
     prime:
@@ -1222,18 +1250,18 @@ parts:
     override-build: |
       set -eux
       autoreconf --install
-      snapcraftctl build
+      craftctl default
       # Generate PPDs files from Foomatic data
       mkdir foomatic-db
-      cp -r $SNAPCRAFT_PART_INSTALL/usr/share/foomatic/* foomatic-db/
+      cp -r $CRAFT_PART_INSTALL/usr/share/foomatic/* foomatic-db/
       echo '#' > foomatic-db/db/oldprinterids
-      rm -rf $SNAPCRAFT_PART_INSTALL/usr/share/foomatic
+      rm -rf $CRAFT_PART_INSTALL/usr/share/foomatic
       FOOMATICDB=foomatic-db foomatic-compiledb -j 2 -t ppd -d ppd `ls -1 foomatic-db/db/source/driver/*ptouch*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
       rm -rf foomatic-db
-      $SNAPCRAFT_STAGE/bin/pyppd -v -o ptouch-ppds ppd
+      $CRAFT_STAGE/bin/pyppd -v -o ptouch-ppds ppd
       rm -rf ppd
-      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/ppd
-      mv ptouch-ppds $SNAPCRAFT_PART_INSTALL/usr/share/ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv ptouch-ppds $CRAFT_PART_INSTALL/usr/share/ppd
     build-packages:
       - autoconf
       - automake
@@ -1254,7 +1282,7 @@ parts:
       - SNAP=1
     # To find the libraries built in this Snap
     build-environment:
-      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SNAPCRAFT_STAGE/usr/lib"
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
     # To improve convenience for developers (and everyone who wants to
     # build from source), we do a "make clean" before "make" here,
     # because if we had done "make" off-Snap, directly in the source
@@ -1267,7 +1295,7 @@ parts:
     override-build: |
       set -eux
       make clean
-      snapcraftctl build
+      craftctl default
     build-packages:
       - libusb-1.0-0-dev
     stage-packages:
@@ -1275,7 +1303,7 @@ parts:
       - libjbig0
       - liblcms2-2
       - libtiff5
-      - libwebp6
+      - libwebp7
     stage:
       - -usr/lib/ghostscript-printer-app
     prime:
