@@ -1,14 +1,13 @@
 name: ghostscript-printer-app
 base: core22
-version: '1.0'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
   Framework) based Printer Application to support printers using
   Ghostscript's built-in printer drivers (and some extra filters).
 
-grade: stable
 confinement: strict
+adopt-info: ghostscript
 
 # Only build on the architectures supported
 architectures:
@@ -189,6 +188,26 @@ parts:
       - --enable-freetype
       - --without-tesseract
       - --datarootdir=/snap/ghostscript-printer-app/current/usr/share/
+    override-pull: |
+      set -eux
+      # Do the actual pull task
+      craftctl default
+      # Settings:
+      # Grade: stable/devel
+      GRADE=stable
+      # Package release number (integer)
+      PACKAGERELEASE=1
+      # Current upstream version of Ghostscript
+      major=`cat base/version.mak | grep 'GS_VERSION_MAJOR=' | cut -d = -f 2`
+      minor=`cat base/version.mak | grep 'GS_VERSION_MINOR=' | cut -d = -f 2`
+      patch=`cat base/version.mak | grep 'GS_VERSION_PATCH=' | cut -d = -f 2`
+      upstreamversion="$major.$minor.$patch"
+      # Compose version string
+      version="$upstreamversion-$PACKAGERELEASE"
+      # Set version and grade
+      craftctl set version="$version"
+      craftctl set grade="$GRADE"
+      export SNAPCRAFT_PROJECT_VERSION="$version"
     stage-packages:
       - libpaper1
       - libfontconfig1
@@ -1280,6 +1299,7 @@ parts:
     make-parameters:
       - LDFLAGS="$LDFLAGS -ljpeg"
       - SNAP=1
+      - VERSION="$VERSION"
     # To find the libraries built in this Snap
     build-environment:
       - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
@@ -1292,10 +1312,21 @@ parts:
     # libraries, ending up with the Snap containing an executable
     # which does not work inside the Snap. The "make clean" removes
     # any accidentally grabbed binary.
+    #
+    # We need to directly call the "make" and "make install" commands
+    # here as we cannot inject an environment variable into the default
+    # build process ("craftctl default") and we also cannot call
+    # "craftctl get version" in the lines of "make-parameters:" or
+    # "build-environment:". This way we get the version number of our
+    # Snap (which is extracted from the Ghostscript upstream source)
+    # inyo the ghostscript-printer-app executable.
     override-build: |
       set -eux
       make clean
-      craftctl default
+      VERSION="`craftctl get version`"
+      make -j"8" LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION"
+      make -j"8" install LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION" DESTDIR="/root/parts/ghostscript-printer-app/install"
+      #craftctl default
     build-packages:
       - libusb-1.0-0-dev
     stage-packages:
@@ -1313,7 +1344,7 @@ parts:
       - usr/share/ghostscript-printer-app
       - -var
       - -usr/share/man
-    after: [pappl-retrofit, pappl, libcupsfilters, libppd, cups-filters, foomatic-db]
+    after: [pappl-retrofit, pappl, ghostscript, libcupsfilters, libppd, cups-filters, foomatic-db]
 
   scripts:
     plugin: dump
