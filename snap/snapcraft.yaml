@@ -1336,6 +1336,8 @@ parts:
       - libtiff5
       - libwebp7
     stage:
+      - usr/bin/ghostscript-printer-app
+      - usr/share/ghostscript-printer-app
       - -usr/lib/ghostscript-printer-app
     prime:
       - usr/bin/ghostscript-printer-app
