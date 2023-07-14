@@ -1325,7 +1325,7 @@ parts:
       make clean
       VERSION="`craftctl get version`"
       make -j"8" LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION"
-      make -j"8" install LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION" DESTDIR="/root/parts/ghostscript-printer-app/install"
+      make -j"8" install LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION" DESTDIR="$CRAFT_PART_INSTALL"
       #craftctl default
     build-packages:
       - libusb-1.0-0-dev
@@ -1336,8 +1336,6 @@ parts:
       - libtiff5
       - libwebp7
     stage:
-      - usr/bin/ghostscript-printer-app
-      - usr/share/ghostscript-printer-app
       - -usr/lib/ghostscript-printer-app
     prime:
       - usr/bin/ghostscript-printer-app
