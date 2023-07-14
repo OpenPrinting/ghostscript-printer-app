@@ -176,7 +176,7 @@ parts:
       - -usr/lib/pkgconfig
 
   ghostscript:
-    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10011/ghostscript-10.01.1.tar.gz
+    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.gz
     plugin: autotools
     # As this Printer Application supports Ghostscript's built-in drivers,
     # we build them all.
