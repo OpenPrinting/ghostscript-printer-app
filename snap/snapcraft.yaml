@@ -33,7 +33,12 @@ parts:
   pappl:
     source: https://github.com/michaelrsweet/pappl
     source-type: git
+    source-tag: 'v1.4.4'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: autotools
     override-build: |
       set -eux
@@ -95,7 +100,12 @@ parts:
   pappl-retrofit:
     source: https://github.com/openprinting/pappl-retrofit
     source-type: git
+    source-tag: '1.0b2'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -134,7 +144,14 @@ parts:
     after: [cups, pappl, libcupsfilters, libppd]
 
   qpdf:
-    source: https://github.com/qpdf/qpdf/releases/download/v11.4.0/qpdf-11.4.0.tar.gz
+    source: https://github.com/qpdf/qpdf
+    source-type: git
+    source-tag: 'v11.8.0'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '12'
+#     no-9x-revisions: true
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
@@ -176,7 +193,16 @@ parts:
       - -usr/lib/pkgconfig
 
   ghostscript:
-    source: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.gz
+    #source: https://git.ghostscript.com/ghostpdl.git
+    source: https://github.com/ArtifexSoftware/ghostpdl.git
+    source-type: git
+    source-tag: 'ghostpdl-10.02.1'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: "ghostpdl-%M.%m.%R"
+#     lower-than: '11'
+#     no-9x-revisions: true
     plugin: autotools
     # As this Printer Application supports Ghostscript's built-in drivers,
     # we build them all.
@@ -235,7 +261,12 @@ parts:
   cups:
     source: https://github.com/OpenPrinting/cups
     source-type: git
+    source-tag: 'v2.4.7'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
     plugin: autotools
     # We only need libcups (with headers, ...), the rastertoepson,
     # rastertohp, and rastertolabel filters (for the PCL-5 PPD files from
@@ -334,7 +365,12 @@ parts:
   libcupsfilters:
     source: https://github.com/OpenPrinting/libcupsfilters
     source-type: git
+    source-tag: '2.0.0'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
     plugin: autotools
     # We only need libcupsfilters itself. so we simply do not prime the
     # auxiliary files (/usr/share)
@@ -396,7 +432,12 @@ parts:
   libppd:
     source: https://github.com/OpenPrinting/libppd
     source-type: git
+    source-tag: '2.0.0'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
     plugin: autotools
     # We need libppd itself, the PPD compiler ppdc and its auxiliary files
     # (/usr/share/ppdc/)
@@ -440,7 +481,12 @@ parts:
   cups-filters:
     source: https://github.com/OpenPrinting/cups-filters
     source-type: git
+    source-tag: '2.0.0'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
     plugin: autotools
     # To find the libraries built in this Snap
     build-environment:
@@ -527,14 +573,22 @@ parts:
   pyppd:
     source: https://github.com/OpenPrinting/pyppd
     source-type: git
+    source-tag: 'release-1-1-0'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'release-%M-%m-%R'
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: python
     override-prime: ""
 
   foomatic-db:
     source: https://github.com/OpenPrinting/foomatic-db
     source-type: git
+    source-tag: '20240109'
     source-depth: 1
+# ext:updatesnap
     plugin: nil
     override-build: |
       set -eux
@@ -618,7 +672,10 @@ parts:
     # Debian source
     source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-branch: debian/3.22.10+dfsg0-2
+    source-tag: debian/3.22.10+dfsg0-2
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     source-depth: 1
     # Upstream source
     #source: https://sourceforge.net/projects/hplip/files/hplip/3.22.10/hplip-3.22.10.tar.gz
@@ -768,8 +825,11 @@ parts:
     # GIT instead
     source: https://salsa.debian.org/printing-team/c2050.git
     source-type: git
-    source-branch: debian/0.3b-10
+    source-tag: debian/0.3b-10
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: make
     override-build: |
       set -eux
@@ -793,8 +853,11 @@ parts:
     # GIT instead
     source: https://salsa.debian.org/printing-team/cjet.git
     source-type: git
-    source-branch: debian/0.8.9-10
+    source-tag: debian/0.8.9-10
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: make
     override-build: |
       set -eux
@@ -810,8 +873,11 @@ parts:
     # Original homepage: http://www.hinterbergen.de/mala/min12xxw/
     source: https://salsa.debian.org/printing-team/min12xxw.git
     source-type: git
-    source-branch: debian/0.0.9-11
+    source-tag: debian/0.0.9-11
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -831,8 +897,11 @@ parts:
     # Original homepage: http://pnm2ppa.sourceforge.net/
     source: https://salsa.debian.org/printing-team/pnm2ppa.git
     source-type: git
-    source-branch: debian/1.13-13
+    source-tag: debian/1.13-13
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -865,8 +934,11 @@ parts:
     # Original homepage: https://sourceforge.net/projects/cupsdriverkodak/
     source: https://salsa.debian.org/printing-team/c2esp.git
     source-type: git
-    source-branch: debian/27-11
+    source-tag: debian/27-11
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -901,8 +973,11 @@ parts:
     #https://www.dymo-label-printers.co.uk/news/download-dymo-sdk-for-linux.html
     source: https://salsa.debian.org/printing-team/dymo-cups-drivers.git
     source-type: git
-    source-branch: debian/1.4.0-12
+    source-tag: debian/1.4.0-12
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -933,8 +1008,11 @@ parts:
     # HPLIP Printer Application (with plugin loaded in-app) should be used.
     source: https://salsa.debian.org/printing-team/foo2zjs.git
     source-type: git
-    source-branch: debian/20200505dfsg0-2
+    source-tag: debian/20200505dfsg0-2
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: nil
     override-build: |
       set -eux
@@ -995,8 +1073,11 @@ parts:
     # for the pre-driverless-IPP PDF printers.
     source: https://salsa.debian.org/printing-team/fxlinuxprint
     source-type: git
-    source-branch: debian/1.1.0+ds-4
+    source-tag: debian/1.1.0+ds-4
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1030,8 +1111,11 @@ parts:
     # /var/snap/ghostscript-printer-app/common/m2300w are supported.
     source: https://salsa.debian.org/printing-team/m2300w.git
     source-type: git
-    source-branch: debian/0.51-15
+    source-tag: debian/0.51-15
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1089,7 +1173,12 @@ parts:
     # git://anonscm.debian.org/collab-maint/printer-driver-oki.git
     source: https://github.com/rbalint/printer-driver-oki
     source-type: git
+    source-tag: '1.0.1'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: make
     make-parameters:
       - PREFIX=/usr
@@ -1131,8 +1220,11 @@ parts:
     # Original homepage: http://hp-pxl-jetready.sourceforge.net/
     source: https://salsa.debian.org/printing-team/pxljr.git
     source-type: git
-    source-branch: debian/1.4+repack0-6
+    source-tag: debian/1.4+repack0-6
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1178,8 +1270,11 @@ parts:
     # Original homepage: https://www.openprinting.org/download/printing/rastertosag-gdi/
     source: https://salsa.debian.org/printing-team/rastertosag-gdi.git
     source-type: git
-    source-branch: debian/0.1-8
+    source-tag: debian/0.1-8
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: nil
     override-build: |
       set -eux
@@ -1202,8 +1297,11 @@ parts:
     #                    https://sourceforge.net/projects/splix/
     source: https://salsa.debian.org/printing-team/splix.git
     source-type: git
-    source-branch: debian/2.0.0+svn315-7
+    source-tag: debian/2.0.0+svn315-7
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
     plugin: nil
     override-build: |
       set -eux
@@ -1239,7 +1337,12 @@ parts:
     # Debian GIT: https://salsa.debian.org/printing-team/brlaser.git
     source: https://github.com/pdewacht/brlaser.git
     source-type: git
+    source-tag: 'v6'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '7'
+#     no-9x-revisions: true
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/usr
@@ -1262,7 +1365,12 @@ parts:
     # Debian GIT: https://salsa.debian.org/printing-team/ptouch-driver.git
     source: https://github.com/philpem/printer-driver-ptouch.git
     source-type: git
+    source-tag: 'v1.7'
     source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
