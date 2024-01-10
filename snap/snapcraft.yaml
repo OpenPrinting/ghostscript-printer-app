@@ -104,8 +104,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     lower-than: '2'
-#     no-9x-revisions: true
+#     format: '%V'
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -589,6 +588,8 @@ parts:
     source-tag: '20240109'
     source-depth: 1
 # ext:updatesnap
+#   version-format:
+#     format: '%V'
     plugin: nil
     override-build: |
       set -eux
@@ -625,7 +626,7 @@ parts:
         rm pbm2l7k.xml; \
         rm pbm2lwxl.xml; \
         rm pentaxpj.xml; \
-      	rm ppmtomd.xml; \
+      rm ppmtomd.xml; \
       )
       # Pre-build all PPDs from the Foomatic XML data
       FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
@@ -672,10 +673,10 @@ parts:
     # Debian source
     source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-tag: debian/3.22.10+dfsg0-2
+    source-tag: 'debian/3.22.10+dfsg0-4'
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     source-depth: 1
     # Upstream source
     #source: https://sourceforge.net/projects/hplip/files/hplip/3.22.10/hplip-3.22.10.tar.gz
@@ -825,11 +826,11 @@ parts:
     # GIT instead
     source: https://salsa.debian.org/printing-team/c2050.git
     source-type: git
-    source-tag: debian/0.3b-10
+    source-tag: 'debian/0.3-7'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: make
     override-build: |
       set -eux
@@ -857,7 +858,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: make
     override-build: |
       set -eux
@@ -877,7 +878,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -901,7 +902,9 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '2'
+#     no-9x-revisions: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -938,7 +941,9 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%M-%m'
+#     lower-than: '8'
+#     no-9x-revisions: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -977,7 +982,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1012,7 +1017,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: nil
     override-build: |
       set -eux
@@ -1077,7 +1082,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1115,7 +1120,9 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '1'
+#     no-9x-revisions: true
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1224,7 +1231,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: autotools
     autotools-configure-parameters:
       - --prefix=/usr
@@ -1274,7 +1281,9 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '1'
+#     no-9x-revisions: true
     plugin: nil
     override-build: |
       set -eux
@@ -1301,7 +1310,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     ignore: true
+#     format: 'debian/%V'
     plugin: nil
     override-build: |
       set -eux
@@ -1341,8 +1350,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     lower-than: '7'
-#     no-9x-revisions: true
+#     format: 'v%V'
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/usr
@@ -1369,6 +1377,7 @@ parts:
     source-depth: 1
 # ext:updatesnap
 #   version-format:
+#     format: 'v%M.%m'
 #     lower-than: '2'
 #     no-9x-revisions: true
     plugin: autotools
