@@ -1411,11 +1411,8 @@ parts:
     after: [cups, cups-filters]
 
   ptouch-driver:
-    # Upstream source GIT is ahead of the release version 6 Debian uses
-    # and Debian does not apply any patch, so we use the current upstream
-    # GIT master here.
+    # Github source: https://github.com/philpem/printer-driver-ptouch.git
     source: https://salsa.debian.org/printing-team/ptouch-driver.git
-    # source: https://github.com/philpem/printer-driver-ptouch.git
     source-type: git
     source-tag: 'debian/1.7-1'
     source-depth: 1
