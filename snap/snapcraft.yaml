@@ -218,21 +218,65 @@ parts:
       # Do the actual pull task
       craftctl default
       # Settings:
-      # Grade: stable/devel
-      GRADE=stable
-      # Package release number (integer)
-      PACKAGERELEASE=1
-      # Current upstream version of Ghostscript
-      major=`cat base/version.mak | grep 'GS_VERSION_MAJOR=' | cut -d = -f 2`
-      minor=`cat base/version.mak | grep 'GS_VERSION_MINOR=' | cut -d = -f 2`
-      patch=`cat base/version.mak | grep 'GS_VERSION_PATCH=' | cut -d = -f 2`
-      upstreamversion="$major.$minor.$patch"
+      # Force channel: auto/devel/edge/stable
+      CHANNEL=stable
+      # Force package release number (integer) or "auto"
+      PACKAGERELEASE=auto
+      # Time stamp of Snap build in Snap Store
+      snapbuilddatehuman=`curl -s -H 'Snap-Device-Series: 16' https://api.snapcraft.io/v2/snaps/info/ghostscript-printer-app | jq -r '."channel-map" | .[] | select(.channel.name == "edge") | select(.channel.architecture == "amd64") | ."created-at"'`
+      snapbuilddate=`date +%s --date=$snapbuilddatehuman`
+      if [ -z "$snapbuilddate" ]; then
+          snapbuilddate=0
+      fi
+      # Time stamp of the last GIT commit of the snapping repository
+      pushd $CRAFT_PROJECT_DIR
+      gitcommitdate=`git log -1 --date=unix | grep Date: | perl -p -e 's/Date:\s*//'`
+      popd
+      if [ -z "$gitcommitdate" ]; then
+          gitcommitdate=0
+      fi
+      # Previous stable and development version
+      prevstable="$(curl -s -H 'Snap-Device-Series: 16' https://api.snapcraft.io/v2/snaps/info/ghostscript-printer-app | jq -r '."channel-map" | .[] | select(.channel.name == "stable") | select(.channel.architecture == "'$CRAFT_TARGET_ARCH'") | .version')"
+      if [ -z "$prevstable" ]; then
+          prevstable=0
+      fi
+      prevdevel="$(curl -s -H 'Snap-Device-Series: 16' https://api.snapcraft.io/v2/snaps/info/ghostscript-printer-app | jq -r '."channel-map" | .[] | select(.channel.name == "edge") | select(.channel.architecture == "'$CRAFT_TARGET_ARCH'") | .version')"
+      if [ -z "$prevdevel" ]; then
+          prevdevel=0
+      fi
+      # Previous version in general
+      dpkg --compare-versions "$prevdevel" lt "$prevstable" && prevversion=$prevstable || prevversion=$prevdevel
+      # Current upstream version of ghostscript
+      upstreamversion="$(git describe --tags --always | sed -E 's/ghostpdl-([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+      # Determine package release number
+      if test "x$PACKAGERELEASE" = "xauto"; then
+          packagerelease=`echo "$prevversion" | perl -p -e 's/^('"$upstreamversion"'\-(\d+)|.*)$/\2/'`
+          if [ -z "$packagerelease" ]; then
+              packagerelease=1
+          else
+              if test "$gitcommitdate" -gt "$snapbuilddate"; then
+                  packagerelease=$(( $packagerelease + 1 ))
+              fi
+          fi
+      else
+          packagerelease=$PACKAGERELEASE
+      fi
       # Compose version string
-      version="$upstreamversion-$PACKAGERELEASE"
+      version="$upstreamversion-$packagerelease"
+      # Select channel
+      if test "x$CHANNEL" = "xedge" -o "x$CHANNEL" = "xdevel"; then
+          grade=devel
+      elif test "x$CHANNEL" = "xstable"; then
+          grade=stable
+      else
+          [ -n "$(echo $version | grep "+git")" ] && grade=devel || grade=stable
+      fi
       # Set version and grade
       craftctl set version="$version"
-      craftctl set grade="$GRADE"
+      craftctl set grade="$grade"
       export SNAPCRAFT_PROJECT_VERSION="$version"
+    build-packages:
+      - jq
     stage-packages:
       - libpaper1
       - libfontconfig1
@@ -1370,14 +1414,14 @@ parts:
     # Upstream source GIT is ahead of the release version 6 Debian uses
     # and Debian does not apply any patch, so we use the current upstream
     # GIT master here.
-    # Debian GIT: https://salsa.debian.org/printing-team/ptouch-driver.git
-    source: https://github.com/philpem/printer-driver-ptouch.git
+    source: https://salsa.debian.org/printing-team/ptouch-driver.git
+    # source: https://github.com/philpem/printer-driver-ptouch.git
     source-type: git
-    source-tag: 'v1.7'
+    source-tag: 'debian/1.7-1'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     format: 'v%M.%m'
+#     format: 'debian/%M.%m-%R'
 #     lower-than: '2'
 #     no-9x-revisions: true
     plugin: autotools
