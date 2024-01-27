@@ -33,7 +33,7 @@ parts:
   pappl:
     source: https://github.com/michaelrsweet/pappl
     source-type: git
-    source-tag: 'v1.4.4'
+    source-tag: 'v1.4.5'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
@@ -672,7 +672,7 @@ parts:
         rm pbm2l7k.xml; \
         rm pbm2lwxl.xml; \
         rm pentaxpj.xml; \
-      	rm ppmtomd.xml; \
+      rm ppmtomd.xml; \
       )
       # Pre-build all PPDs from the Foomatic XML data
       FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
