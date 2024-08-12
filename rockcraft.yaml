@@ -1,0 +1,1475 @@
+name: ghostscript-printer-app
+base: ubuntu@22.04
+version: '10.03.0-9'
+summary: Ghostscript Printer Application
+description: |
+  The Ghostscript Printer Application is a PAPPL (Printer Application
+  Framework) based Printer Application to support printers using
+  Ghostscript's built-in printer drivers (and some extra filters).
+
+adopt-info: ghostscript
+
+# Only build on the architectures supported
+platforms:
+    arm64:
+    amd64:
+    armhf:
+
+services:
+  dbus:
+    command: /scripts/run-dbus.sh
+    override: replace
+    on-failure: restart
+    startup: enabled
+
+  ghostscript-printer-app:
+    command: ghostscript-printer-app -o log-file=/ghostscript-printer-app.log server
+    override: replace
+    on-failure: restart
+    startup: enabled
+    after: [dbus]
+
+parts:
+  pappl:
+    source: https://github.com/michaelrsweet/pappl
+    source-type: git
+    source-tag: 'v1.4.6'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
+    plugin: autotools
+    override-build: |
+      set -eux
+      # Raise the supported number of vendor-specific options/attributes in
+      # PAPPL to 256, as the original 32 can be too small for some busy PPD
+      # files
+      perl -p -i -e 's/(define\s+PAPPL_MAX_VENDOR\s+)32/\1 256/' pappl/printer.h
+      # De-activate log-rotating. It does not work with the forked processes
+      # of the filters
+      perl -p -i -e 's/(system->logmaxsize\s+=).*/\1 0;/' pappl/system.c
+      # As we do not use PAPPL's own backends but the CUPS backends using the
+      # "cups" device scheme of pappl-retrofit, we let the manual "Network
+      # Printer" device on the "Add Printer" page of the web interface use a
+      # "cups:socket://..." URI instead of simply "socket://..."
+      perl -p -i -e 's/(httpAssembleURI\(.*?)"socket"(.*?\))/\1"cups:socket"\2/' pappl/system-webif.c
+      # PAPPL's build system does not insert the LDFLAGS when linking.
+      # Patching Makedefs.in to fix this
+      perl -p -i -e 's/^(\s*DSOFLAGS\s*=\s*\S*\s+)/\1\$\(LDFLAGS\) /' Makedefs.in
+      craftctl default
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --enable-libjpeg
+      - --enable-libpng
+      - --enable-libusb
+      - --with-dnssd=avahi
+    build-packages:
+      - libavahi-client-dev
+      - libgnutls28-dev
+      - libjpeg-dev
+      - libpam0g-dev
+      - libpng-dev
+      - libusb-1.0-0-dev
+      - zlib1g-dev
+      - perl-base
+    stage-packages:
+      # We have libavahi-client3 already in this Snap via the "cups" part,
+      # so here we do not stage it again to avoid any file clashes.
+      #- libavahi-client3
+      - libpng16-16
+      - libusb-1.0-0
+    prime:
+      - -etc/fonts
+      - -var
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+    after: [cups]
+
+  pappl-retrofit:
+    source: https://github.com/openprinting/pappl-retrofit
+    source-type: git
+    # source-tag: '1.0b2'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     ignore: true
+#     format: '%V'
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
+    build-packages:
+      - autoconf
+      - automake
+      - libtool
+      - autotools-dev
+      - pkg-config
+      - perl-base
+    stage-packages:
+      - libusb-1.0-0
+    organize:
+      usr/share/legacy-printer-app/testpage.pdf: usr/share/ghostscript-printer-app/testpage.pdf
+    prime:
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/share/ghostscript-printer-app/testpage.pdf
+      - -var
+      - -usr/var
+      - -usr/bin/legacy-printer-app
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/lib/legacy-printer-app
+      - -usr/share/legacy-printer-app
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+    after: [cups, pappl, libcupsfilters, libppd]
+
+  qpdf:
+    source: https://github.com/qpdf/qpdf
+    source-type: git
+    source-tag: 'v11.9.1'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '12'
+#     no-9x-revisions: true
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/
+      - -DCMAKE_BUILD_RPATH_USE_ORIGIN=1
+      - -DUSE_IMPLICIT_CRYPTO=0
+      - -DREQUIRE_CRYPTO_GNUTLS=1
+      - -DSHOW_FAILED_TEST_OUTPUT=1
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DQTEST_COLOR=0
+    build-packages:
+      - cmake
+      - g++
+      - libjpeg-dev
+      - zlib1g-dev
+      - libgnutls28-dev
+    stage-packages:
+      - libjpeg-turbo8
+    stage:
+      # The *.la file which gets installed by "make install" contains a
+      # wrong prefix, breaking parts of this Snap which use this library
+      - -usr/lib/lib*.la
+    prime:
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -share/man
+      - -share/doc
+      - -share/lintian
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/lib/libqpdf.a
+      - -usr/lib/libqpdf.la
+      - -usr/lib/pkgconfig
+
+  ghostscript:
+    #source: https://git.ghostscript.com/ghostpdl.git
+    source: https://github.com/ArtifexSoftware/ghostpdl.git
+    source-type: git
+    source-tag: 'ghostpdl-10.03.0rc1_test'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: "ghostpdl-%M.%m.%R"
+#     lower-than: '11'
+#     no-9x-revisions: true
+    plugin: autotools
+    # As this Printer Application supports Ghostscript's built-in drivers,
+    # we build them all.
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --without-x
+      - --disable-gtk
+      - --with-drivers=ALL
+      - --enable-freetype
+      - --without-tesseract
+    build-packages:
+      - curl
+    stage-packages:
+      - libpaper1
+      - libfontconfig1
+      - libfreetype6
+      - libpng16-16
+    prime:
+      - usr/bin/gs
+      - lib/*/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/share/ghostscript
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+    after: [cups]
+
+  cups:
+    source: https://github.com/OpenPrinting/cups
+    source-type: git
+    source-tag: 'v2.4.10'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
+    plugin: autotools
+    # We only need libcups (with headers, ...), the rastertoepson,
+    # rastertohp, and rastertolabel filters (for the PCL-5 PPD files from
+    # Ricoh and OEM, and for sample.drv PPDs), the backends, and the
+    # sample.drv file
+    override-build: |
+      set -eux
+      patch -p1 < $CRAFT_PROJECT_DIR/patch-files/cups-dnssd-backend-socket-only.patch
+      # We use "--with-tls=gnutls" here, as current CUPS defaults to SSL here
+      # and this is buggy, causing a segfault when serving out a HTTPS web
+      # interface page.
+      ./configure --with-tls=gnutls
+      cd cups
+      make
+      cd ..
+      cd filter
+      make rastertoepson
+      make rastertohp
+      make rastertolabel
+      cd ..
+      cd backend
+      # Have USB quirk files in user-modifiable space for debugging
+      perl -p -i -e 's/"CUPS_DATADIR"/"USB_QUIRK_DIR"/' usb-libusb.c
+      make snmp dnssd socket ipp ipps lpd usb
+      cd ..
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib
+      cp cups/libcups*.a $CRAFT_PART_INSTALL/usr/lib/
+      cp -P cups/libcups*.so* $CRAFT_PART_INSTALL/usr/lib/
+      mkdir -p $CRAFT_PART_INSTALL/usr/include/cups
+      cp cups/*.h $CRAFT_PART_INSTALL/usr/include/cups/
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp cups-config $CRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertoepson $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertohp $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp filter/rastertolabel $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
+      ( cd backend; \
+        cp snmp dnssd socket ipp ipps lpd usb org.cups.usb-quirks $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/ \
+      )
+      cp conf/snmp.conf $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/backend/
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp ppdc/sample.drv $CRAFT_PART_INSTALL/usr/share/ppd/cups.drv
+    build-packages:
+      - patch
+      - gettext
+      - autoconf
+      - automake
+      - libtool
+      - autotools-dev
+      - pkg-config
+      - libavahi-client-dev
+      - libavahi-common-dev
+      - libavahi-compat-libdnssd-dev
+      - libdbus-1-dev
+      - libfontconfig1-dev
+      - libfreetype6-dev
+      - libgnutls28-dev
+      - libjpeg-dev
+      - libldap2-dev
+      - libkrb5-dev
+      - libpam0g-dev
+      - libpaper-dev
+      - libpng-dev
+      - libusb-1.0-0-dev
+      - perl-base
+    stage-packages:
+      - libusb-1.0-0
+      - libavahi-common3
+      - libavahi-client3
+      - libicu70
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/share/ppd/cups.drv
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/lib/ghostscript-printer-app/backend/*
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libdconf.*
+      - -usr/lib/*/libicuio.*
+      - -usr/lib/*/libicutest.*
+      - -usr/lib/*/libicutu.*
+      - -usr/lib/*/libicuuc.*
+      - -usr/lib/*/libicui18n.*
+
+  libcupsfilters:
+    source: https://github.com/OpenPrinting/libcupsfilters
+    source-type: git
+    source-tag: '2.0.0'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
+    plugin: autotools
+    # We only need libcupsfilters itself. so we simply do not prime the
+    # auxiliary files (/usr/share)
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --disable-avahi
+      - --disable-mutool
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - liblcms2-dev
+      - libpoppler-cpp-dev
+      - libpng-dev
+      - libjpeg-dev
+      - libtiff5-dev
+      - zlib1g-dev
+      - libfontconfig1-dev
+      - libdbus-1-dev
+      - libexif-dev
+    stage-packages:
+      - libpoppler-cpp0v5
+      - libjbig0
+      - liblcms2-2
+      - libnspr4
+      - libnss3
+      - libopenjp2-7
+      - libpoppler118
+      - libtiff5
+      - libwebp7
+      - libexif12
+    stage:
+      # The *.la file which gets installed by "make install" contains a
+      # wrong prefix, breaking parts of this Snap which use this library
+      - -usr/lib/lib*.la
+    prime:
+      - -etc
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+       - usr/share/cups
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libssl3.*
+    after: [cups, qpdf, ghostscript]
+
+  libppd:
+    source: https://github.com/OpenPrinting/libppd
+    source-type: git
+    source-tag: '2.0.0'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
+    plugin: autotools
+    # We need libppd itself, the PPD compiler ppdc and its auxiliary files
+    # (/usr/share/ppdc/)
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --disable-mutool
+      - --disable-pdftocairo
+      - --disable-acroread
+      - --enable-ppdc-utils
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - poppler-utils
+    prime:
+      - -etc
+      - -var
+      - -usr/bin/ppdc
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
+      - usr/share/ppdc/*
+    after: [cups, ghostscript, libcupsfilters]
+
+  cups-filters:
+    source: https://github.com/OpenPrinting/cups-filters
+    source-type: git
+    source-tag: '2.0.0'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '3'
+#     no-9x-revisions: true
+    plugin: autotools
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
+    # We need foomatic-rip (for the Foomatic PPDs for the Ghostscript drivers
+    # and also for the PCL-XL PPDs from Ricoh and OEM), gstoraster (for SpliX),
+    # the rastertoepson, rastertopclx (for the included PPD files), and also
+    # all PPD and *.drv files
+    override-build: |
+      set -eux
+      ./autogen.sh
+      ./configure --disable-mutool --enable-ppdc-utils
+      make foomatic-rip
+      make gstoraster
+      make pdftops
+      make rastertoescpx
+      make rastertopclx
+      mkdir -p $CRAFT_PART_INSTALL
+      cp foomatic-rip $CRAFT_PART_INSTALL
+      cp gstoraster $CRAFT_PART_INSTALL
+      cp pdftops $CRAFT_PART_INSTALL
+      cp rastertoescpx $CRAFT_PART_INSTALL
+      cp rastertopclx $CRAFT_PART_INSTALL
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppdc
+      cp filter/escp.h filter/pcl.h $CRAFT_PART_INSTALL/usr/share/ppdc/
+      # Compile cupsfilters.drv into PPD files
+      $CRAFT_STAGE/usr/bin/ppdc -I $CRAFT_PART_INSTALL/usr/share/ppdc -I $CRAFT_STAGE/usr/share/ppdc -d ppd drv/cupsfilters.drv
+      # Remove PPD files which are not useful in the Printer Application
+      rm -f ppd/test.ppd ppd/test2.ppd ppd/textonly.ppd
+      # Compress the included PPD files, both ready-made and compiled
+      cp ppdfiles/*.ppd ppd
+      pyppd -v -o cups-filters-ppds ppd
+      rm -rf ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv cups-filters-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - gettext
+      - autoconf
+      - automake
+      - autotools-dev
+      - pkg-config
+      - g++
+      - sharutils
+      - pyppd
+    stage-packages:
+      - poppler-utils
+    organize:
+      foomatic-rip: usr/lib/ghostscript-printer-app/filter/foomatic-rip
+      gstoraster: usr/lib/ghostscript-printer-app/filter/gstoraster
+      pdftops: usr/lib/ghostscript-printer-app/filter/pdftops
+      rastertoescpx: usr/lib/ghostscript-printer-app/filter/rastertoescpx
+      rastertopclx: usr/lib/ghostscript-printer-app/filter/rastertopclx
+    prime:
+      - -etc/fonts
+      - -var
+      - -usr/include
+      - -usr/lib/pkgconfig
+      - -usr/share/fonts
+      - -usr/share/man
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/lib/*/nss
+      - usr/bin/pdftops
+      - usr/lib/ghostscript-printer-app
+      - usr/share/ppd/cups-filters-ppds
+      - usr/share/ppdc/*
+      # Reported unused by snapcraft linter
+      - -usr/lib/*/libcairo.*
+      - -usr/lib/*/libssl3.*
+      - -usr/lib/*/libX11.*
+      - -usr/lib/*/libXau.*
+      - -usr/lib/*/libXdmcp.*
+      - -usr/lib/*/libXext.*
+      - -usr/lib/*/libXrender.*
+      - -usr/lib/*/libpixman-1.*
+      - -usr/lib/*/libxcb.*
+      - -usr/lib/*/libxcb-render.*
+      - -usr/lib/*/libxcb-shm.*
+    after: [cups, qpdf, ghostscript, pyppd, libcupsfilters, libppd]
+
+  pyppd:
+    source: https://github.com/OpenPrinting/pyppd
+    source-type: git
+    source-tag: 'release-1-1-0'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'release-%M-%m-%R'
+#     lower-than: '2'
+#     no-9x-revisions: true
+    plugin: python
+    build-packages:
+      - python3.10
+    stage-packages:
+      - python3.10
+    override-prime: ""
+
+  foomatic-db:
+    source: https://github.com/OpenPrinting/foomatic-db
+    source-type: git
+    source-tag: '20240504'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: '%V'
+    plugin: nil
+    override-build: |
+      set -eux
+      ./make_configure
+      ./configure --disable-ppds-to-cups --disable-gzip-ppds --prefix=/usr --with-drivers=NOOBSOLETES,NOEMPTYCMDLINE
+      make DESTDIR=`pwd`/../install install
+      cd ../install
+      # Remove all PostScript PPDs, these printers are supported by the
+      # PostScript Printer Application
+      rm usr/share/foomatic/db/source/PPD/*/*.ppd
+      rm -rf usr/share/foomatic/db/source/PPD/Kyocera
+      rm -rf usr/share/foomatic/db/source/PPD/Utax
+      rm -rf usr/share/foomatic/db/source/PPD/Oce
+      rm -rf usr/share/foomatic/db/source/PPD/*/PS
+      # Remove executable bits on the files
+      find usr/share/foomatic/db -executable -type f -print0 | xargs -0 chmod -x || :
+      # Remove non-PPD files from the PPD file directories
+      find usr/share/foomatic/db/source/PPD -type f \! -name '*.ppd' -print0 | xargs -0 rm || :
+      # Correct common errors in PPD files: "*CloseUI" without ':' and
+      # "*1284DeviceId" instead of "*1284DeviceID"
+      for f in `find usr/share/foomatic/db/source/PPD -name '*.ppd'`; do perl -p -i -e 's/^\*CloseUI(\s+)/*CloseUI:\1/' $f; perl -p -i -e 's/\*1284DeviceId/*1284DeviceID/' $f; done
+      # Remove drivers which need external filters we cannot get hold on
+      # Note that the "./configure; make install" process of foomatic-db
+      # already removed driver entries marked obsolete and entries without
+      # driver command line prototype.
+      ( cd usr/share/foomatic/db/source/driver; \
+        rm bjc800j.xml; \
+        rm c2070.xml; \
+        rm drv_x125.xml; \
+        rm lm1100.xml; \
+        rm lpstyl.xml; \
+        rm ml85p.xml; \
+        rm pbm2l2030.xml; \
+        rm pbm2l7k.xml; \
+        rm pbm2lwxl.xml; \
+        rm pentaxpj.xml; \
+      rm ppmtomd.xml; \
+      )
+      # Pre-build all PPDs from the Foomatic XML data
+      FOOMATICDB=usr/share/foomatic foomatic-compiledb -j 4 -t ppd -d ppd `ls -1 usr/share/foomatic/db/source/driver/*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
+      # Compress the Foomatic PPDs in a self-extracting archive
+      pyppd -v -o foomatic-ppds ppd
+      rm -rf ppd
+      # Compress the manufacturer PPDs in a self-extracting archive
+      mv usr/share/foomatic/db/source/PPD ppd
+      pyppd -v -o manufacturer-ppds ppd
+    build-packages:
+      - perl-base
+      - python3
+      - xz-utils
+      - foomatic-db-engine
+      - python3.10
+      - pyppd
+    stage-packages:
+      - python3
+      - xz-utils
+      - python3.10
+    organize:
+      foomatic-ppds: usr/share/ppd/foomatic-ppds
+      manufacturer-ppds: usr/share/ppd/manufacturer-ppds
+    stage:
+      - usr/bin
+      - usr/share/ppd
+    prime:
+      - usr/bin/xz
+      - -usr/bin/pdb3
+      - -usr/bin/pydoc3
+      - -usr/bin/pygettext3
+      - usr/share/ppd
+    after: [pyppd]
+
+  hplip:
+    # We need only the hpijs executable (for the Foomatic PPDs HPIJS is used
+    # here for non-HP PCL 5c/e printers, works better than Ghostscript's
+    # built-in drivers
+    #
+    # We use the Debian package source instead of the upstream source code
+    # of HPLIP as the Debian package has ~80 patches fixing bugs which are
+    # reported upstream but the patches not adopted upstream.
+    # This way we should have the same user experience in terms of reliability
+    # and quality as with the Debian package.
+    # Note that the repository has all patches already applied, so we do
+    # not need to apply them before building.
+    # Debian source
+    source: https://salsa.debian.org/printing-team/hplip.v2.git
+    source-type: git
+    source-tag: 'debian/3.22.10+dfsg0-5'
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    source-depth: 1
+    # Upstream source
+    #source: https://sourceforge.net/projects/hplip/files/hplip/3.22.10/hplip-3.22.10.tar.gz
+    plugin: autotools
+    build-environment:
+      - PYTHON: python3
+      - LD_LIBRARY_PATH: $CRAFT_STAGE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+      - CUPS_DATADIR: $CRAFT_STAGE/usr/share/cups
+      - on arm64:
+        - BUILDARCH: aarch64-unknown-linux-gnu
+      - else:
+        - BUILDARCH: $CRAFT_ARCH_TRIPLET
+    # Paremeter list here only needed for upstream source, but no need to
+    # comment out for Debian source
+    autotools-configure-parameters:
+      - --build=$BUILDARCH
+      - --prefix=/usr
+      - --disable-foomatic-rip-hplip-install
+      - --without-docdir
+      - --without-htmldir
+      - --without-hpppddir
+      - --without-drvdir
+      - --without-icondir
+      - --disable-hpcups-install
+      - --disable-cups-drv-install
+      - --disable-cups-ppd-install
+      - --enable-hpijs-install
+      - --disable-foomatic-drv-install
+      - --disable-foomatic-ppd-install
+      - --enable-network-build
+      - --disable-class-driver
+      - --disable-scan-build
+      - --disable-gui-build
+      - --disable-fax-build
+      - --disable-qt3
+      - --disable-qt4
+      - --disable-qt5
+      - --disable-policykit
+    # We need only the hpijs executable
+    override-build: |
+      set -eux
+      # Correct hard-coded /etc/hp/ path in Makefile
+      perl -p -i -e 's:/etc/hp:/ghostscript-printer-app/current/etc/hp:' Makefile*
+      # Do the "./configure" (for Debian source)
+      sh debian/autogen.sh
+      ./configure \
+        --build=$BUILDARCH \
+        --prefix=/usr \
+        --disable-foomatic-rip-hplip-install \
+        --without-docdir \
+        --without-htmldir \
+        --without-hpppddir \
+        --without-drvdir \
+        --without-icondir \
+        --disable-hpcups-install \
+        --disable-cups-drv-install \
+        --disable-cups-ppd-install \
+        --enable-hpijs-install \
+        --disable-foomatic-drv-install \
+        --disable-foomatic-ppd-install \
+        --enable-network-build \
+        --disable-class-driver \
+        --disable-scan-build \
+        --disable-gui-build \
+        --disable-fax-build \
+        --disable-qt3 \
+        --disable-qt4 \
+        --disable-qt5 \
+        --disable-policykit
+      # Following step needed because of the Debian patches (for Debian source)
+      # Compress various files before building, they are needed for the build,
+      # and were compressed in the non-repacked upstream tarballs
+      find . -name '*.ppd' | xargs gzip -f
+      find data/ -regextype posix-extended -regex '.*\.(ldl|pcl|ps|pdf)' | xargs gzip -f
+      # Following step needed because of the Debian patches (for Debian source)
+      # Rebuild the .drv.in files from drv.in.template
+      python3 ./dat2drv.py
+      # Correct hard-coded paths in C/C++ source code
+      # The /etc/... and /usr/... paths in these files do not need to get
+      # corrected, only the /var/... ones
+      perl -p -i -e 's:\"/var/lib/hp:\"/var/ghostscript-printer-app/common/var/:' common/utils.[ch]
+      # Do the "./configure; make; make install" (for upstream source)
+      # craftctl default
+      # Do the "make; make install" (for Debian source)
+      make
+      make DESTDIR=`pwd`/../install install
+      # Correct hard-coded paths in hplip.conf
+      ( cd ../install/ghostscript-printer-app/current/etc/hp; \
+        perl -p -i -e 's:/var/:/var/ghostscript-printer-app/common/var/:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/:/ghostscript-printer-app/current/usr/share/:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/ppd/hplip:/usr/share/ppd:' hplip.conf; \
+        perl -p -i -e 's:/usr/share/ppd/HP:/usr/share/ppd:' hplip.conf; \
+        perl -p -i -e 's:/usr/lib/cups/:/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/:' hplip.conf; \
+      )
+    build-packages:
+      - ubuntu-dev-tools
+      - dpkg-dev
+      - fakeroot
+      - autoconf
+      - automake
+      - gawk
+      - python3-dev
+      - libpython3-dev
+      - fdupes
+      - libavahi-client-dev
+      - libavahi-core-dev
+      - libdbus-1-dev
+      - libjpeg-dev
+      - libsnmp-dev
+      - libssl-dev
+      - libtool
+      - libudev-dev
+      - libusb-1.0-0-dev
+      - perl-base
+      - python3
+      - xz-utils
+      - pyppd
+      - python3-dev
+    stage-packages:
+      - libsnmp40
+      - python3-dev
+    organize:
+      ghostscript-printer-app/current/etc/hp/hplip.conf: etc/hp/hplip.conf
+    prime:
+      - etc/hp/hplip.conf
+      - usr/bin/hpijs
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+      # Reported unused by snapcraft linter
+      - -usr/lib/libhpipp.*
+      - -usr/lib/*/libgdbm.*
+      - -usr/lib/*/libgdbm_compat.*
+      - -usr/lib/*/libnetsnmpagent.*
+      - -usr/lib/*/libnetsnmpmibs.*
+      - -usr/lib/*/libpci*
+      - -usr/lib/*/libperl.*
+      - -usr/lib/*/libsensors.*
+      - -usr/lib/*/libsnmp.*
+    after: [cups, cups-filters]
+
+  # Unmaintained printer drivers which come as a filter to convert generic
+  # raster output of GhostScript into the printer's data format. The PPDs
+  # for these drivers come as part of Foomatic, so we build and install
+  # only the filters here.
+
+  c2050:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    source: https://salsa.debian.org/printing-team/c2050.git
+    source-type: git
+    source-tag: 'debian/0.3-7'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: make
+    override-build: |
+      set -eux
+      make -j2
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp c2050 $CRAFT_PART_INSTALL/usr/bin
+    stage-packages:
+      - libjbig0
+      - libjpeg-turbo8
+      - libpng16-16
+      - libtiff5
+      - libwebp7
+    prime:
+      - usr/bin/c2050
+      - lib/*/lib*.so*
+      - usr/lib/lib*.so*
+      - usr/lib/*/lib*.so*
+
+  cjet:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    source: https://salsa.debian.org/printing-team/cjet.git
+    source-type: git
+    source-tag: 'debian/0.8.9-11'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: make
+    override-build: |
+      set -eux
+      make -j2
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp cjet $CRAFT_PART_INSTALL/usr/bin
+    prime:
+      - usr/bin/cjet
+
+  min12xxw:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://www.hinterbergen.de/mala/min12xxw/
+    source: https://salsa.debian.org/printing-team/min12xxw.git
+    source-type: git
+    source-tag: debian/0.0.9-11
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      # Refresh build system, because of the Debian patches
+      autoreconf --install
+      craftctl default
+    build-packages:
+      - autoconf
+    prime:
+      - usr/bin/min12xxw
+
+  pnm2ppa:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://pnm2ppa.sourceforge.net/
+    source: https://salsa.debian.org/printing-team/pnm2ppa.git
+    source-type: git
+    source-tag: debian/1.13-13
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '2'
+#     no-9x-revisions: true
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+      - --sysconfdir=/etc
+    override-build: |
+      set -eux
+      # "Unlock" config file
+      perl -p -i -e 's/^\s*version\s+0\s+/version 710 /' pnm2ppa.conf
+      # Set config file path (we copy the config file to an editable place
+      # on server startup)
+      perl -p -i -e 's:(\s+)SYSCONFDIR "(/pnm2ppa\.):\1"/var/ghostscript-printer-app/common/pnm2ppa\2:' pnm2ppa.h
+      # Update config.guess/config.sub, pnm2ppa seems to be of pre-arm64 era
+      cp /usr/share/misc/config.* .
+      craftctl default
+    build-packages:
+      - autotools-dev
+    prime:
+      - etc/pnm2ppa.conf
+      - usr/bin/calibrate_ppa
+      - usr/bin/pnm2ppa
+
+  # Unmaintained printer drivers which come as complete package of either
+  # CUPS filter(s) or filters to use together with Ghostscript and
+  # foomatic-rip and of PPD files or PPD file generators (*.drv files for
+  # /usr/share/cups/drv or executables for /usr/lib/cups/driver)
+
+  c2esp:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://sourceforge.net/projects/cupsdriverkodak/
+    source: https://salsa.debian.org/printing-team/c2esp.git
+    source-type: git
+    source-tag: debian/27-11
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%M-%m'
+#     lower-than: '8'
+#     no-9x-revisions: true
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
+    override-build: |
+      set -eux
+      # In libcupsfilter2 the API for driver-relevant functions has changed
+      # to introduce log functions. This patch does the needed adaptations
+      # on the code of c2esp.
+      patch -p1 < $CRAFT_PROJECT_DIR/patch-files/c2esp-libcupsfilters2-api.patch
+      autoreconf --install
+      craftctl default
+      perl -p -i -e 's:/usr/lib/cups/filter/::g' */*.drv
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp */*.drv $CRAFT_PART_INSTALL/usr/share/ppd/
+    build-packages:
+      - autoconf
+      - automake
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/*.drv
+    after: [cups, libcupsfilters, libppd, cups-filters]
+
+  dymo-cups-drivers:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage:
+    #https://www.dymo-label-printers.co.uk/news/download-dymo-sdk-for-linux.html
+    source: https://salsa.debian.org/printing-team/dymo-cups-drivers.git
+    source-type: git
+    source-tag: debian/1.4.0-12
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      craftctl default
+      # Compress the included PPD files
+      pyppd -v -o dymo-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv dymo-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - pyppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/dymo-ppds
+    after: [cups, pyppd]
+
+  foo2zjs:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    # We do support color profiles in the sub-directories of
+    # /var/snap/ghostscript-printer-app/common/foo2zjs but we do not
+    # support automatic loading of firmware files. For those printers the
+    # HPLIP Printer Application (with plugin loaded in-app) should be used.
+    source: https://salsa.debian.org/printing-team/foo2zjs.git
+    source-type: git
+    source-tag: 'debian/20200505dfsg0-3'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: nil
+    override-build: |
+      set -eux
+      cp printer-profile.in printer-profile
+      # Adjust paths in Makefile
+      cp Makefile Makefile.orig
+      perl -p -i -e  's:\$\(PREFIX\)/share/foo2:/var/ghostscript-printer-app/common/foo2zjs/foo2:' Makefile
+      make all PREFIX=/ghostscript-printer-app/current/usr CUPS_SERVERBIN=$CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app CUPS_DEVEL=1 CUPS_GOODAPI=1
+      cp Makefile.orig Makefile
+      make install PREFIX=$CRAFT_PART_INSTALL/usr CUPS_SERVERBIN=$CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app
+      # Install missing files
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin/
+      cp getweb $CRAFT_PART_INSTALL/usr/bin/
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      rm -f $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      cp command2foo2lava-pjl $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      # Adjust the paths to the auxiliary files
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/ghostscript-printer-app/current/usr:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:\$PREFIX/share/foo2:/var/ghostscript-printer-app/common/foo2zjs/foo2:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:/usr/share/":/var/ghostscript-printer-app/common/foo2zjs/":' $CRAFT_PART_INSTALL/usr/bin/getweb
+      perl -p -i -e  's:/usr/share/\$FOO:/var/ghostscript-printer-app/common/foo2zjs/\$FOO:' $CRAFT_PART_INSTALL/usr/bin/printer-profile*
+      # Use $TMPDIR for temporary directory
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Add "-dNOINTERPOLATE" to the Ghostscript command lines to make
+      # Ghostscript rendering the pages significantly faster
+      perl -p -i -e 's/dNOPAUSE/dNOPAUSE -dNOINTERPOLATE/g' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Set up the PPD file collection
+      cp -r PPD ppd
+      # Remove the PPDs of printers which need their firmware loaded whenever
+      # they are turned on. User should use the HPLIP Printer Application
+      # with them
+      for model in `cat Makefile | grep install-usermap | cut -d j -f 2 | cut -d ' ' -f 1`; do
+        rm ppd/HP-LaserJet_$model.ppd
+      done
+      # Compress the included PPD files
+      pyppd -v -o foo2zjs-ppds ppd
+      rm -rf ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv foo2zjs-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - dc
+      - pyppd
+    stage-packages:
+      - psutils
+      - bsdutils
+      - dc
+    prime:
+      - usr/bin/*
+      - usr/lib/ghostscript-printer-app/filter/command2foo2lava-pjl
+      - usr/share/ppd/foo2zjs-ppds
+      - usr/share/foo2*
+    after: [cups, pyppd]
+
+  fxlinuxprint:
+    # Upstream source is not available any more, using Debian packaging
+    # GIT instead
+    # Fuji Xerox probably stopped with this driver as this is a PDF driver
+    # and nowadays PDF printers use driverless IPP. The driver seems to be
+    # for the pre-driverless-IPP PDF printers.
+    source: https://salsa.debian.org/printing-team/fxlinuxprint
+    source-type: git
+    source-tag: debian/1.1.0+ds-4
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      craftctl default
+      # Compress the included PPD file
+      pyppd -v -o fxlinuxprint-ppds .
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv fxlinuxprint-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - pyppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/fxlinuxprint-ppds
+    after: [cups, pyppd]
+
+  m2300w:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://sourceforge.net/projects/m2300w/
+    # There is a successor (native CUPS!) on
+    # https://github.com/ondrej-zary/m2x00w-cups
+    # but as it is a very invasive change we stay with m2300w for the
+    # 2300w qnd 2400w printers. We have no printers for testing.
+    # Color profiles in the appropriate sub-directories of
+    # /var/snap/ghostscript-printer-app/common/m2300w are supported.
+    source: https://salsa.debian.org/printing-team/m2300w.git
+    source-type: git
+    source-tag: debian/0.51-15
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '1'
+#     no-9x-revisions: true
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      # Explicitly call "./configure; make; make install" as "make install"
+      # uses "INSTROOT" instead of "DESTDIR" (and in core20 the "autotools"
+      # plugin is hardwired to "DESTDIR")
+      autoreconf --install
+      ./configure --prefix=/usr
+      make -j2
+      make INSTROOT=$CRAFT_PART_INSTALL install
+      # Adjust the paths to the auxiliary files
+      perl -p -i -e  's:PREFIX=.*:PREFIX=/ghostscript-printer-app/current/usr:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      perl -p -i -e  's:SHARE=.*:SHARE=/var/ghostscript-printer-app/common/m2300w:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Use $TMPDIR for temporary directory
+      perl -p -i -e  's:/tmp:\$TMPDIR:' $CRAFT_PART_INSTALL/usr/bin/*-wrapper
+      # Remove unneeded old foomatic-rip file
+      rm -rf $CRAFT_PART_INSTALL/usr/share/m2300w/0.51/foomatic
+      # Package the two PPDs and their second version counterpart.
+      mkdir -p $CRAFT_PART_INSTALL/ppd
+      for n in 2300 2400; do
+        mv $CRAFT_PART_INSTALL/usr/share/cups/model/Minolta/magicolor_${n}W-m${n}w.ppd $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+        # Create copies for "KONICA MINOLTA" manufacturer name
+        perl -p -e 's/Minolta/KONICA MINOLTA/g' $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd > $CRAFT_PART_INSTALL/ppd/KONICA_MINOLTA-magicolor_${n}W-m2300w.ppd
+        # Correct originals for "Minolta" manufacturer name
+        perl -p -i -e 's/KONICA MINOLTA/Minolta/g' $CRAFT_PART_INSTALL/ppd/Minolta-magicolor_${n}W-m2300w.ppd
+      done
+      rm -rf $CRAFT_PART_INSTALL/usr/share/cups
+      # Compress the PPD files
+      ( cd $CRAFT_PART_INSTALL
+        pyppd -v -o m2300w-ppds ppd
+        rm -rf ppd
+        mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+        mv m2300w-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+      )
+    build-packages:
+      - autoconf
+      - automake
+      - pyppd
+    stage-packages:
+      - psutils
+    prime:
+      - usr/bin/*
+      - usr/share/ppd/m2300w-ppds
+      - usr/share/m2300w/*
+    after: [cups, pyppd]
+
+  printer-driver-oki:
+    # There is no Debian packaging GIT, using "Upstream" GIT from
+    # Debian maintainer Balint Reczey:
+    # https://github.com/rbalint/printer-driver-oki
+    # Original download place at Okidata:
+    # ftp://ftp2.okidata.com/pub/drivers/linux/
+    # Original Debian packaging GIT (server removed):
+    # git://anonscm.debian.org/collab-maint/printer-driver-oki.git
+    source: https://github.com/rbalint/printer-driver-oki
+    source-type: git
+    source-tag: '1.0.1'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     lower-than: '2'
+#     no-9x-revisions: true
+    plugin: make
+    make-parameters:
+      - PREFIX=/usr
+      - DESTDIR=/ghostscript-printer-app/current
+    override-build: |
+      set -eux
+      # Correct path to CUPS filters
+      perl -p -i -e 's:/usr/lib/cups/filter:/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter:' filters/*
+      # Correct path for Ghostscript
+      perl -p -i -e 's:/usr/bin/gs:/ghostscript-printer-app/current/usr/bin/gs:' filters/*
+      # Do not overwrite $PATH environment variable
+      perl -p -i -e 's:^(\s*(export |)PATH):#\1:' filters/*
+      # Do not set $GSCRIPT_LIB environment variable
+      perl -p -i -e 's:^(\s*(export |)GSCRIPT_LIB):#\1:' filters/*
+      # Use $TMPDIR for temporary directory
+      perl -p -i -e 's:/tmp:\$TMPDIR:' filters/*
+      # Create filter installation directory
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/cups/filter/
+      # Correct language in PPD file      
+      perl -p -i -e 's/^(\*LanguageVersion:\s+).*/\1Portuguese/' MFP/OK4X1PSBR.ppd
+      # Install the files
+      craftctl default
+      # Compress the included PPD files
+      ( cd $CRAFT_PART_INSTALL/usr/share/ppd
+        ln -s okidata ppd
+        pyppd -v -o oki-ppds ppd
+        rm ppd
+      )
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/*
+      - usr/share/ppd/oki-ppds
+    after: [cups, pyppd]
+
+  pxljr:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://hp-pxl-jetready.sourceforge.net/
+    source: https://salsa.debian.org/printing-team/pxljr.git
+    source-type: git
+    source-tag: debian/1.4+repack0-6
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      craftctl default
+      # Generate PPD files for the HP LaserJet 3500 and 3600
+      mkdir ppd
+      cp HP-Color_LaserJet_3550-pxljr.ppd ppd
+      cd ppd
+      for n in 3500 3600; do
+        perl -p -e "s:3550(?!\&quot):${n}:g" HP-Color_LaserJet_3550-pxljr.ppd > HP-Color_LaserJet_${n}-pxljr.ppd
+      done
+      # Allow also PDF as input data format
+      perl -p -i -e 's,^\*cupsFilter:\s*\"application/vnd.cups-postscript\s+0\s+foomatic-rip\",*cupsFilter: "application/vnd.cups-postscript 100 foomatic-rip"\n*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip",' *.ppd
+      # Make the page rendering by Ghostscript faster
+      perl -p -i -e 's,(\-sDEVICE=ijs),-dNOINTERPOLATE \1,' *.ppd
+      # Compress the PPD files
+      cd ..
+      pyppd -v -o pxljr-ppds ppd
+      rm -rf ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv pxljr-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - libijs-dev
+      - libjpeg-dev
+      - pyppd
+    stage-packages:
+      - libijs-0.35
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/bin/ijs_pxljr
+      - usr/lib/*/libijs*.so*
+      - usr/share/ppd/pxljr-ppds
+    after: [cups, pyppd]
+
+  rastertosag-gdi:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: https://www.openprinting.org/download/printing/rastertosag-gdi/
+    source: https://salsa.debian.org/printing-team/rastertosag-gdi.git
+    source-type: git
+    source-tag: debian/0.1-8
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '1'
+#     no-9x-revisions: true
+    plugin: nil
+    override-build: |
+      set -eux
+      # Copy the filter to the right place
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp rastertosag-gdi $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      # Compress the PPD files
+      pyppd -v -o rastertosag-gdi-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv rastertosag-gdi-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertosag-gdi
+      - usr/share/ppd/rastertosag-gdi-ppds
+    after: [pyppd]
+
+  splix:
+    # Upstream source is still available but to include Debian's patches, we
+    # are using Debian packaging GIT instead
+    # Original homepage: http://splix.ap2c.org/,
+    #                    https://sourceforge.net/projects/splix/
+    source: https://salsa.debian.org/printing-team/splix.git
+    source-type: git
+    source-tag: debian/2.0.0+svn315-7
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%V'
+    plugin: nil
+    override-build: |
+      set -eux
+      make V=1 rastertoqpdl_LIBS="-lcupsimage -lcups -lpthread -ljbig -L$CRAFT_STAGE/usr/lib/" pstoqpdl_LIBS="-lcupsimage -lcups -ljbig -L$CRAFT_STAGE/usr/lib/" CUPSFILTER="/ghostscript-printer-app/current/usr/lib/ghostscript-printer-app/filter"
+      # Copy the filters to the right place
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      cp optimized/*toqpdl $CRAFT_PART_INSTALL/usr/lib/ghostscript-printer-app/filter
+      # Compress the PPD files
+      cp *.ppd ppd
+      pyppd -v -o splix-ppds ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv splix-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - libjbig-dev
+      - pyppd
+    stage-packages:
+      - libjbig0
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/pstoqpdl
+      - usr/lib/ghostscript-printer-app/filter/rastertoqpdl
+      - usr/lib/*/libjbig*.so*
+      - usr/share/ppd/splix-ppds
+    after: [cups, pyppd]
+
+  # Maintained(?) printer drivers which come as complete package of either
+  # CUPS filter(s) or filters to use together with Ghostscript and
+  # foomatic-rip and of PPD files or PPD file generators (*.drv files for
+  # /usr/share/cups/drv or executables for /usr/lib/cups/driver)
+
+  brlaser:
+    # Upstream source GIT is ahead of the release version 6 Debian uses
+    # and Debian does not apply any patch, so we use the current upstream
+    # GIT master here.
+    # Debian GIT: https://salsa.debian.org/printing-team/brlaser.git
+    source: https://github.com/pdewacht/brlaser.git
+    source-type: git
+    source-tag: 'v6'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'v%V'
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    override-build: |
+      set -eux
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      cp *.drv $CRAFT_PART_INSTALL/usr/share/ppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertobrlaser
+      - usr/share/ppd/*.drv
+    after: [cups, cups-filters]
+
+  ptouch-driver:
+    # Github source: https://github.com/philpem/printer-driver-ptouch.git
+    source: https://salsa.debian.org/printing-team/ptouch-driver.git
+    source-type: git
+    source-tag: 'debian/1.7-1'
+    source-depth: 1
+# ext:updatesnap
+#   version-format:
+#     format: 'debian/%M.%m-%R'
+#     lower-than: '2'
+#     no-9x-revisions: true
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/usr
+    override-build: |
+      set -eux
+      autoreconf --install
+      craftctl default
+      # Generate PPDs files from Foomatic data
+      mkdir foomatic-db
+      cp -r $CRAFT_PART_INSTALL/usr/share/foomatic/* foomatic-db/
+      echo '#' > foomatic-db/db/oldprinterids
+      rm -rf $CRAFT_PART_INSTALL/usr/share/foomatic
+      FOOMATICDB=foomatic-db foomatic-compiledb -j 2 -t ppd -d ppd `ls -1 foomatic-db/db/source/driver/*ptouch*.xml | perl -p -e 's:^.*db/source/driver/(\S*)\.xml\s*$:\1\n:'`
+      rm -rf foomatic-db
+      pyppd -v -o ptouch-ppds ppd
+      rm -rf ppd
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/ppd
+      mv ptouch-ppds $CRAFT_PART_INSTALL/usr/share/ppd
+    build-packages:
+      - autoconf
+      - automake
+      - foomatic-db-engine
+      - libxml-libxml-perl
+      - pyppd
+    organize:
+      usr/lib/cups/filter: usr/lib/ghostscript-printer-app/filter
+    prime:
+      - usr/lib/ghostscript-printer-app/filter/rastertoptch
+      - usr/share/ppd/ptouch-ppds
+    after: [cups, pyppd]
+
+  ghostscript-printer-app:
+    plugin: make
+    source: .
+    make-parameters:
+      - LDFLAGS="$LDFLAGS -ljpeg"
+      - VERSION="$VERSION"
+      - SNAP=1
+    # To find the libraries built in this Snap
+    build-environment:
+      - LD_LIBRARY_PATH: "${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CRAFT_STAGE/usr/lib"
+    # To improve convenience for developers (and everyone who wants to
+    # build from source), we do a "make clean" before "make" here,
+    # because if we had done "make" off-Snap, directly in the source
+    # tree and afterwards build the Snap with snapcraft, the build
+    # sucks in our local binary of ghostscript-printer-app instead of
+    # compiling its own one in the Snap harness with the appropriate
+    # libraries, ending up with the Snap containing an executable
+    # which does not work inside the Snap. The "make clean" removes
+    # any accidentally grabbed binary.
+    #
+    # We need to directly call the "make" and "make install" commands
+    # here as we cannot inject an environment variable into the default
+    # build process ("craftctl default") and we also cannot call
+    # "craftctl get version" in the lines of "make-parameters:" or
+    # "build-environment:". This way we get the version number of our
+    # Snap (which is extracted from the Ghostscript upstream source)
+    # inyo the ghostscript-printer-app executable.
+    override-build: |
+      set -eux
+      make clean
+      VERSION="`craftctl get version`"
+      make -j"8" LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION"
+      make -j"8" install LDFLAGS="$LDFLAGS -ljpeg" SNAP=1 VERSION="$VERSION" DESTDIR="$CRAFT_PART_INSTALL"
+      #craftctl default
+    build-packages:
+      - libusb-1.0-0-dev
+    stage-packages:
+      - libusb-1.0-0
+      - libjbig0
+      - liblcms2-2
+      - libtiff5
+      - libwebp7
+    stage:
+      - -usr/lib/ghostscript-printer-app
+    prime:
+      - usr/bin/ghostscript-printer-app
+      - lib/*/lib*.so*
+      - usr/lib/*/lib*.so*
+      - usr/share/ghostscript-printer-app
+      - -var
+      - -usr/share/man
+    after: [pappl-retrofit, pappl, ghostscript, libcupsfilters, libppd, cups-filters, foomatic-db]
+
+  avahi-daemon:
+    plugin: nil
+    overlay-packages:
+      - avahi-daemon
+      - avahi-utils
+      - libnss-mdns
+      - mdns-scan
+      - dbus
+      - python3
+
+  scripts:
+    plugin: dump
+    source: scripts/
+    organize:
+      run-dbus.sh: /scripts/run-dbus.sh
+    override-prime: |
+      set -eux
+      craftctl default
+      # Ensure the run-dbus.sh script has executable permissions
+      if [ -f "$CRAFT_PRIME/scripts/run-dbus.sh" ]; then
+        chmod +x "$CRAFT_PRIME/scripts/run-dbus.sh"
+      fi
