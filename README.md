@@ -452,7 +452,32 @@ PostScript printer, accessory configuration and option defaults can
 also often get polled from the printer.
 
 <!-- Begin Included Components -->
-
+## Included Components
+  - pappl v1.4.8
+  - qpdf v11.9.1
+  - ghostscript ghostpdl-10.05.0-test-base-001
+  - cups v2.4.11
+  - libcupsfilters 2.1.0
+  - libppd 2.1.0
+  - cups-filters 2.0.1
+  - pyppd release-1-1-0
+  - foomatic-db 20240504
+  - hplip debian/3.22.10+dfsg0-5
+  - c2050 debian/0.3-7
+  - cjet debian/0.8.9-11
+  - min12xxw debian/0.0.9-11
+  - pnm2ppa debian/1.13-13
+  - c2esp debian/27-11
+  - dymo-cups-drivers debian/1.4.0-12
+  - foo2zjs debian/20200505dfsg0-3
+  - fxlinuxprint debian/1.1.0+ds-4
+  - m2300w debian/0.51-15
+  - printer-driver-oki 1.0.2
+  - pxljr debian/1.4+repack0-6
+  - rastertosag-gdi debian/0.1-8
+  - splix debian/2.0.1-1
+  - brlaser v6
+  - ptouch-driver debian/1.7-1
 <!-- End Included Components -->
 
 ## BUILDING WITHOUT PACKAGING OR INSTALLATION

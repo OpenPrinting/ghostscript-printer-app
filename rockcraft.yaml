@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: ubuntu@22.04
-version: '10.05.0-2'
+version: '10.05.0-3'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
@@ -1168,7 +1168,7 @@ parts:
     # git://anonscm.debian.org/collab-maint/printer-driver-oki.git
     source: https://github.com/rbalint/printer-driver-oki
     source-type: git
-    source-tag: '1.0.1'
+    source-tag: '1.0.2'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
