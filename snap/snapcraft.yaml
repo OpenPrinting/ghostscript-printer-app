@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: core22
-version: '10.05.0-2'
+version: '10.05.0-3'
 grade: stable
 summary: Ghostscript Printer Application
 description: |
@@ -1165,7 +1165,7 @@ parts:
     # git://anonscm.debian.org/collab-maint/printer-driver-oki.git
     source: https://github.com/rbalint/printer-driver-oki
     source-type: git
-    source-tag: '1.0.1'
+    source-tag: '1.0.2'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
