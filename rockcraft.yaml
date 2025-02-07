@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: ubuntu@22.04
-version: '10.05.0-3'
+version: '10.05.0-4'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
@@ -655,7 +655,7 @@ parts:
     # Debian source
     source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-tag: 'debian/3.22.10+dfsg0-5'
+    source-tag: 'debian/3.22.10+dfsg0-6'
 # ext:updatesnap
 #   version-format:
 #     format: 'debian/%V'

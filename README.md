@@ -462,7 +462,7 @@ also often get polled from the printer.
   - cups-filters 2.0.1
   - pyppd release-1-1-0
   - foomatic-db 20240504
-  - hplip debian/3.22.10+dfsg0-5
+  - hplip debian/3.22.10+dfsg0-6
   - c2050 debian/0.3-7
   - cjet debian/0.8.9-11
   - min12xxw debian/0.0.9-11
