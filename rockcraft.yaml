@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: ubuntu@22.04
-version: '10.05.0-4'
+version: '10.05.0-5'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
@@ -142,7 +142,7 @@ parts:
   qpdf:
     source: https://github.com/qpdf/qpdf
     source-type: git
-    source-tag: 'v11.9.1'
+    source-tag: 'v11.10.0'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
