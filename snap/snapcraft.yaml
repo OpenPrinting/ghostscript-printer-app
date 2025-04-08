@@ -1328,14 +1328,17 @@ parts:
     # Upstream source GIT is ahead of the release version 6 Debian uses
     # and Debian does not apply any patch, so we use the current upstream
     # GIT master here.
+    # The code got forked by a new maintainer, "Owl-Maintain", so
+    # we use the code from there.
     # Debian GIT: https://salsa.debian.org/printing-team/brlaser.git
-    source: https://github.com/pdewacht/brlaser.git
+    # Original GIT: https://github.com/pdewacht/brlaser.git
+    source: https://github.com/Owl-Maintain/brlaser.git
     source-type: git
-    source-tag: 'v6'
+    source-tag: 'v6.2.7'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
-#     format: 'v%V'
+#     format: 'v%M.%m.%R'
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/usr
