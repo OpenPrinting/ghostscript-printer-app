@@ -16,6 +16,7 @@ architectures:
   - build-on: amd64
   - build-on: arm64
   - build-on: armhf
+  - build-on: riscv64
 
 apps:
   ghostscript-printer-app-server:
