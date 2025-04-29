@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: ubuntu@22.04
-version: '10.05.0-11'
+version: '10.05.1-1'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
@@ -192,7 +192,7 @@ parts:
     #source: https://git.ghostscript.com/ghostpdl.git
     source: https://github.com/ArtifexSoftware/ghostpdl.git
     source-type: git
-    source-tag: 'ghostpdl-10.05.0-test-base-001'
+    source-tag: 'ghostpdl-10.05.1rc1_test002'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
