@@ -13,7 +13,14 @@ on:
 
 jobs:
   build-rock:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+        - arch: 'amd64'
+          runner: ubuntu-22.04
+        - arch: 'arm64'
+          runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,7 +30,14 @@ jobs:
         id: rockcraft
 
   build-snap:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - arch: 'amd64'
+          runner: ubuntu-22.04
+        - arch: 'arm64'
+          runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

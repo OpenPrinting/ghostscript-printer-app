@@ -1453,7 +1453,7 @@ parts:
 
   avahi-daemon:
     plugin: nil
-    overlay-packages:
+    stage-packages:
       - avahi-daemon
       - avahi-utils
       - libnss-mdns
