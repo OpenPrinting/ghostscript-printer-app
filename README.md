@@ -469,7 +469,7 @@ also often get polled from the printer.
   - pnm2ppa debian/1.13-13
   - c2esp debian/27-11
   - dymo-cups-drivers debian/1.4.0-12
-  - foo2zjs debian/20200505dfsg0-3
+  - foo2zjs debian/20200505dfsg0-4
   - fxlinuxprint debian/1.1.0+ds-4
   - m2300w debian/0.51-15
   - printer-driver-oki 1.0.2
