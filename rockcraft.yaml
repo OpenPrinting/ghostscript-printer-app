@@ -1,6 +1,6 @@
 name: ghostscript-printer-app
 base: ubuntu@22.04
-version: '10.06.0-3'
+version: '10.06.0-4'
 summary: Ghostscript Printer Application
 description: |
   The Ghostscript Printer Application is a PAPPL (Printer Application
@@ -882,7 +882,7 @@ parts:
     # Original homepage: http://pnm2ppa.sourceforge.net/
     source: https://salsa.debian.org/printing-team/pnm2ppa.git
     source-type: git
-    source-tag: debian/1.13-13
+    source-tag: 'debian/1.13-14'
     source-depth: 1
 # ext:updatesnap
 #   version-format:

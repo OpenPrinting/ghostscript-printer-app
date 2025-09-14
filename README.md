@@ -466,7 +466,7 @@ also often get polled from the printer.
   - c2050 debian/0.3-7
   - cjet debian/0.8.9-11
   - min12xxw debian/0.0.9-11
-  - pnm2ppa debian/1.13-13
+  - pnm2ppa debian/1.13-14
   - c2esp debian/27-11
   - dymo-cups-drivers debian/1.4.0-12
   - foo2zjs debian/20200505dfsg0-4
