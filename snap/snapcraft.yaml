@@ -1335,7 +1335,7 @@ parts:
     # Original GIT: https://github.com/pdewacht/brlaser.git
     source: https://github.com/Owl-Maintain/brlaser.git
     source-type: git
-    source-tag: 'v6.2.7'
+    source-tag: 'v6.2.8'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
