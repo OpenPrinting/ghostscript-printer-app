@@ -246,7 +246,7 @@ parts:
   cups:
     source: https://github.com/OpenPrinting/cups
     source-type: git
-    source-tag: 'v2.4.15'
+    source-tag: 'v2.4.16'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
