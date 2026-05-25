@@ -659,7 +659,7 @@ parts:
     # Debian source
     source: https://salsa.debian.org/printing-team/hplip.v2.git
     source-type: git
-    source-tag: 'debian/3.22.10+dfsg0-8'
+    source-tag: 'debian/3.26.4+dfsg0-1'
 # ext:updatesnap
 #   version-format:
 #     format: 'debian/%V'
