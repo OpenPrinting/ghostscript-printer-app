@@ -350,7 +350,7 @@ parts:
   libcupsfilters:
     source: https://github.com/OpenPrinting/libcupsfilters
     source-type: git
-    source-tag: '2.1.1'
+    source-tag: '2.2.0'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
