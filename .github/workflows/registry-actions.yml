@@ -23,11 +23,18 @@ on:
 
 jobs:
   build-rock:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+        - arch: 'amd64'
+          runner: ubuntu-22.04
+        - arch: 'arm64'
+          runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+          
       - name: Pack with Rockcraft
         uses: canonical/craft-actions/rockcraft-pack@main
         id: rockcraft
@@ -35,7 +42,7 @@ jobs:
       - name: Upload Rock Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cups-rock
+          name: cups-rock-${{ matrix.arch }}
           path: ${{ steps.rockcraft.outputs.rock }}
 
   publish-rock:
@@ -49,7 +56,8 @@ jobs:
       - name: Download Rock Artifact
         uses: actions/download-artifact@v4
         with:
-          name: cups-rock
+          pattern: cups-rock-*
+          merge-multiple: true
 
       - name: Install Dependencies
         run: |
@@ -84,20 +92,41 @@ jobs:
         run: |
           IMAGE="$(yq '.name' rockcraft.yaml)"
           VERSION="$(yq '.version' rockcraft.yaml)"
-          ROCK="$(ls *.rock | tail -n 1)"
           ORG_NAME=$(echo "${ORG}" | tr '[:upper:]' '[:lower:]')
-          sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"${ORG_NAME}/${IMAGE}:${VERSION}-edge"
+          GITHUB_IMAGE="ghcr.io/${ORG_NAME}/${IMAGE}"
+          #declare -a DOCKER_MANIFESTS=()
+          declare -a GITHUB_MANIFESTS=()
+          # Upload each rock to the container registry
+          for rock in *.rock; do
+            echo "Create container from ${rock}"
+            ARCH=$(rockcraft.skopeo --insecure-policy inspect "oci-archive:${rock}" --format "{{ .Architecture }}")
+            echo "Architecture: ${ARCH}"
+            rockcraft.skopeo --insecure-policy copy oci-archive:${rock} "docker-daemon:${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-edge"
+            # Push to Docker Hub
+            # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-edge ${USERNAME}:${VERSION}-${ARCH}-edge
+            # docker push ${USERNAME}/${IMAGE}:${VERSION}-${ARCH}-edge
+            # DOCKER_MANIFESTS+=("${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-edge")
+            # Push to GitHub Packages
+            docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-edge ${GITHUB_IMAGE}:${VERSION}-${ARCH}-edge
+            docker push ${GITHUB_IMAGE}:${VERSION}-${ARCH}-edge
+            GITHUB_MANIFESTS+=("${GITHUB_IMAGE}:${VERSION}-${ARCH}-edge")
+          done
+
+          # Create and upload a multi-arch manifest for Docker Hub
+          # echo "create multi-arch container from: ${DOCKER_MANIFESTS[@]}"
+          # docker manifest create ${ORG_NAME}/${IMAGE}:${VERSION}-edge ${DOCKER_MANIFESTS[@]}
           # Push to Docker Hub
           # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-edge ${USERNAME}:${VERSION}-edge
           # docker push ${USERNAME}/${IMAGE}:${VERSION}-edge
           # docker tag ${USERNAME}/${IMAGE}:${VERSION}-edge ${USERNAME}/${IMAGE}:latest
           # docker push ${USERNAME}/${IMAGE}:latest
-          # Push to GitHub Packages
-          GITHUB_IMAGE="ghcr.io/${ORG_NAME}/${IMAGE}"
-          docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-edge ${GITHUB_IMAGE}:${VERSION}-edge
-          docker push ${GITHUB_IMAGE}:${VERSION}-edge
-          docker tag ${GITHUB_IMAGE}:${VERSION}-edge ${GITHUB_IMAGE}:latest
-          docker push ${GITHUB_IMAGE}:latest
+
+          # Create and upload a multi-arch manifest for Github Packages
+          echo "create multi-arch container from: ${GITHUB_MANIFESTS[@]}"
+          docker manifest create ${GITHUB_IMAGE}:${VERSION}-edge ${GITHUB_MANIFESTS[@]}
+          docker manifest push ${GITHUB_IMAGE}:${VERSION}-edge
+          docker manifest create ${GITHUB_IMAGE}:latest ${GITHUB_MANIFESTS[@]}
+          docker manifest push ${GITHUB_IMAGE}:latest
 
       - name: Build and Push Docker Image (Stable Channel)
         if: github.event.inputs.workflow_choice == 'stable' || github.event.inputs.workflow_choice == 'both'
@@ -107,13 +136,32 @@ jobs:
         run: |
             IMAGE="$(yq '.name' rockcraft.yaml)"
             VERSION="$(yq '.version' rockcraft.yaml)"
-            ROCK="$(ls *.rock | tail -n 1)"
             ORG_NAME=$(echo "${ORG}" | tr '[:upper:]' '[:lower:]')
-            sudo rockcraft.skopeo --insecure-policy copy oci-archive:"${ROCK}" docker-daemon:"${ORG_NAME}/${IMAGE}:${VERSION}-stable"
-            # Push to Docker Hub
-            # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-stable ${USERNAME}:${VERSION}-stable
-            # docker push ${USERNAME}/${IMAGE}:${VERSION}-stable
-            # Push to GitHub Packages
             GITHUB_IMAGE="ghcr.io/${ORG_NAME}/${IMAGE}"
-            docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-stable ${GITHUB_IMAGE}:${VERSION}-stable
-            docker push ${GITHUB_IMAGE}:${VERSION}-stable
+            #declare -a DOCKER_MANIFESTS=()
+            declare -a GITHUB_MANIFESTS=()
+            # Upload each rock to the container registry
+            for rock in *.rock; do
+              echo "Create container from ${rock}"
+              ARCH=$(rockcraft.skopeo --insecure-policy inspect "oci-archive:${rock}" --format "{{ .Architecture }}")
+              echo "Architecture: ${ARCH}"
+              rockcraft.skopeo --insecure-policy copy oci-archive:${rock} "docker-daemon:${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-stable"
+              # Push to Docker Hub
+              # docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-stable ${USERNAME}:${VERSION}-${ARCH}-stable
+              # docker push ${USERNAME}/${IMAGE}:${VERSION}-${ARCH}-stable
+              # DOCKER_MANIFESTS+=("${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-stable")
+              # Push to GitHub Packages
+              docker tag ${ORG_NAME}/${IMAGE}:${VERSION}-${ARCH}-stable ${GITHUB_IMAGE}:${VERSION}-${ARCH}-stable
+              docker push ${GITHUB_IMAGE}:${VERSION}-${ARCH}-stable
+              GITHUB_MANIFESTS+=("${GITHUB_IMAGE}:${VERSION}-${ARCH}-stable")
+            done
+
+            # Create and upload a multi-arch manifest for Docker Hub
+            # echo "create multi-arch container from: ${DOCKER_MANIFESTS[@]}"
+            # docker manifest create ${ORG_NAME}/${IMAGE}:${VERSION}-stable ${DOCKER_MANIFESTS[@]}
+            # docker manifest push ${ORG_NAME}/${IMAGE}:${VERSION}-stable
+
+            # Create and upload a multi-arch manifest for Github Packages
+            echo "create multi-arch container from: ${GITHUB_MANIFESTS[@]}"
+            docker manifest create ${GITHUB_IMAGE}:${VERSION}-stable ${GITHUB_MANIFESTS[@]}
+            docker manifest push ${GITHUB_IMAGE}:${VERSION}-stable
