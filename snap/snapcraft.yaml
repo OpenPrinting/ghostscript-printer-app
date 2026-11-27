@@ -36,7 +36,7 @@ parts:
   pappl:
     source: https://github.com/michaelrsweet/pappl
     source-type: git
-    source-tag: 'v1.4.12'
+    source-tag: 'v1.4.13'
     source-depth: 1
 # ext:updatesnap
 #   version-format:
